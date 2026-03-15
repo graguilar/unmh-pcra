@@ -485,21 +485,11 @@ export default function SubmitPage() {
               </ol>
             </div>
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href={'/contact/' + docId} style={{ background: '#007a86', color: '#fff', padding: '12px 24px', borderRadius: '6px', textDecoration: 'none', fontWeight: '700', fontSize: '14px' }}>
-                Contact PCRA Team
-              </a>
-              <button onClick={() => {
-                setStep(1)
-                setInviteSent(false)
-                setForm({ requesterName: '', requesterEmail: '', projectName: '', projectId: '', building: '', floor: '', projectManager: '', contractors: '', gcContact: '', duration: '', startDate: '', meetingDate: '', meetingTime: '' })
-                setAdditionalAttendees([{ name: '', email: '' }])
-                const id = 'RA-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000)
-                setDocId(id)
-              }} style={{ background: '#f3f4f6', color: '#333', border: '1px solid #ddd', padding: '12px 24px', borderRadius: '6px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
-                Schedule Another PCRA
-              </button>
-            </div>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+  <a href="/portal" style={{ background: '#007a86', color: '#fff', padding: '12px 32px', borderRadius: '6px', textDecoration: 'none', fontWeight: '700', fontSize: '15px' }}>
+    Go to My Portal →
+  </a>
+</div>
           </div>
         )}
 
