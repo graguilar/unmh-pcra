@@ -1,0 +1,451 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
+import { supabase } from '../../../lib/supabase'
+
+const ICRA_MATRIX = {
+  'A': { 'Low': 'I', 'Medium': 'I', 'High': 'II', 'Highest': 'II' },
+  'B': { 'Low': 'I', 'Medium': 'II', 'High': 'III', 'Highest': 'III' },
+  'C': { 'Low': 'II', 'Medium': 'III', 'High': 'III', 'Highest': 'IV' },
+  'D': { 'Low': 'III', 'Medium': 'III', 'High': 'IV', 'Highest': 'IV' },
+}
+
+const CHECKLIST_ITEMS = [
+  'Barriers/containment intact',
+  'Negative air pressure verified',
+  'HEPA filtration operating',
+  'Debris removed from work area',
+  'Sticky mats in place at exits',
+  'Workers using proper PPE',
+  'No visible dust migration',
+  'All penetrations sealed',
+  'Fire exits unobstructed',
+  'Signage posted at all entrances',
+]
+
+export default function AssessPage() {
+  const params = useParams()
+  const docId = params.docId
+  const [submission, setSubmission] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('icra')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [assessmentId, setAssessmentId] = useState(null)
+
+  const [form, setForm] = useState({
+    construction_type: '',
+    patient_risk_group: '',
+    icra_class: '',
+    icra_notes: '',
+    hot_work_required: false,
+    hot_work_type: '',
+    hot_work_location: '',
+    hot_work_fire_watch: '',
+    hot_work_suppression_impaired: false,
+    hot_work_detector_isolated: false,
+    hot_work_notes: '',
+    confined_space_required: false,
+    confined_space_location: '',
+    confined_space_hazards: '',
+    confined_space_attendant: '',
+    confined_space_notes: '',
+    energized_required: false,
+    energized_voltage: '',
+    energized_location: '',
+    energized_ppe: '',
+    energized_notes: '',
+    above_ceiling_required: false,
+    above_ceiling_location: '',
+    above_ceiling_fire_barriers: '',
+    above_ceiling_notes: '',
+    daily_checklist: {},
+    completed_by: '',
+    status: 'draft',
+  })
+
+  useEffect(() => {
+    async function load() {
+      const { data: sub } = await supabase
+        .from('submissions').select('*').eq('doc_id', docId).single()
+      if (sub) setSubmission(sub)
+      const { data: existing } = await supabase
+        .from('assessments').select('*').eq('doc_id', docId).single()
+      if (existing) {
+        setAssessmentId(existing.id)
+        setForm(f => ({ ...f, ...existing }))
+      }
+      setLoading(false)
+    }
+    load()
+  }, [docId])
+
+  useEffect(() => {
+    if (form.construction_type && form.patient_risk_group) {
+      const cls = ICRA_MATRIX[form.construction_type]?.[form.patient_risk_group] || ''
+      setForm(f => ({ ...f, icra_class: cls }))
+    }
+  }, [form.construction_type, form.patient_risk_group])
+
+  function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
+
+  async function handleSave(status = 'draft') {
+    setSaving(true)
+    const payload = { ...form, doc_id: docId, submission_id: submission?.id, status, updated_at: new Date().toISOString() }
+    if (status === 'complete') { payload.completed_at = new Date().toISOString() }
+    let error
+    if (assessmentId) {
+      const res = await supabase.from('assessments').update(payload).eq('id', assessmentId)
+      error = res.error
+    } else {
+      const res = await supabase.from('assessments').insert(payload).select().single()
+      error = res.error
+      if (res.data) setAssessmentId(res.data.id)
+    }
+    setSaving(false)
+    if (!error) { setSaved(true); setTimeout(() => setSaved(false), 3000) }
+    else alert('Error saving: ' + error.message)
+  }
+
+  const s = { fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f3f4f6' }
+  const hdr = { background: '#ba0c2f', color: '#fff', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
+  const card = { background: '#fff', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', padding: '28px', marginBottom: '16px' }
+  const lbl = { display: 'block', fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }
+  const inp = { width: '100%', padding: '9px 12px', border: '1.5px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'inherit' }
+  const sel = { ...inp }
+  const ta = { ...inp, height: '80px', resize: 'vertical' }
+  const row = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }
+  const secHdr = { fontSize: '16px', fontWeight: '800', color: '#111', margin: '0 0 20px', paddingBottom: '10px', borderBottom: '2px solid #f3f4f6' }
+
+  const tabs = [
+    { id: 'icra', label: '1. ICRA Class' },
+    { id: 'hot', label: '2. Hot Work' },
+    { id: 'confined', label: '3. Confined Space' },
+    { id: 'energized', label: '4. Energized Elec.' },
+    { id: 'ceiling', label: '5. Above Ceiling' },
+    { id: 'checklist', label: '6. Daily Checklist' },
+  ]
+
+  if (loading) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'system-ui' }}>Loading assessment...</div>
+  if (!submission) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'system-ui', color: '#dc2626' }}>Submission not found for Doc ID: {docId}</div>
+
+  const icraColors = { 'I': '#16a34a', 'II': '#ca8a04', 'III': '#ea580c', 'IV': '#dc2626' }
+
+  return (
+    <div style={s}>
+      <div style={hdr}>
+        <div>
+          <div style={{ fontWeight: '900', fontSize: '15px', letterSpacing: '0.05em' }}>UNMH PCRA ASSESSMENT</div>
+          <div style={{ fontSize: '12px', opacity: 0.85 }}>{submission.project_name} · {docId}</div>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {saved && <span style={{ background: '#16a34a', color: '#fff', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>✓ Saved</span>}
+          <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '6px', padding: '7px 16px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
+            {saving ? 'Saving...' : 'Save Draft'}
+          </button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px 16px' }}>
+        <div style={{ background: '#fff', borderRadius: '8px', padding: '14px 20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', display: 'flex', gap: '32px', flexWrap: 'wrap', fontSize: '13px' }}>
+          <div><span style={{ color: '#6b7280', fontWeight: '700' }}>Building: </span>{submission.building}</div>
+          <div><span style={{ color: '#6b7280', fontWeight: '700' }}>Floor: </span>{submission.floor}</div>
+          <div><span style={{ color: '#6b7280', fontWeight: '700' }}>PM: </span>{submission.project_manager}</div>
+          <div><span style={{ color: '#6b7280', fontWeight: '700' }}>Meeting: </span>{submission.meeting_date}</div>
+          {form.icra_class && <div><span style={{ color: '#6b7280', fontWeight: '700' }}>ICRA Class: </span><span style={{ background: icraColors[form.icra_class], color: '#fff', padding: '2px 10px', borderRadius: '12px', fontWeight: '800' }}>{form.icra_class}</span></div>}
+        </div>
+
+        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: '700', cursor: 'pointer', background: activeTab === t.id ? '#ba0c2f' : '#fff', color: activeTab === t.id ? '#fff' : '#374151', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'icra' && (
+          <div style={card}>
+            <div style={secHdr}>ICRA Class Determination</div>
+            <div style={row}>
+              <div>
+                <label style={lbl}>Type of Construction Activity</label>
+                <select style={sel} value={form.construction_type} onChange={e => set('construction_type', e.target.value)}>
+                  <option value=''>-- Select --</option>
+                  <option value='A'>Type A — Inspection / non-invasive</option>
+                  <option value='B'>Type B — Small scale, short duration</option>
+                  <option value='C'>Type C — Work generates dust</option>
+                  <option value='D'>Type D — Major demolition / construction</option>
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>Patient Risk Group</label>
+                <select style={sel} value={form.patient_risk_group} onChange={e => set('patient_risk_group', e.target.value)}>
+                  <option value=''>-- Select --</option>
+                  <option value='Low'>Low Risk</option>
+                  <option value='Medium'>Medium Risk</option>
+                  <option value='High'>High Risk</option>
+                  <option value='Highest'>Highest Risk</option>
+                </select>
+              </div>
+            </div>
+            {form.icra_class && (
+              <div style={{ background: '#f0fdf4', border: `2px solid ${icraColors[form.icra_class]}`, borderRadius: '8px', padding: '20px', marginBottom: '20px', textAlign: 'center' }}>
+                <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Determined ICRA Class</div>
+                <div style={{ fontSize: '48px', fontWeight: '900', color: icraColors[form.icra_class] }}>{form.icra_class}</div>
+                <div style={{ fontSize: '13px', color: '#374151', marginTop: '4px' }}>
+                  {form.icra_class === 'I' && 'Lowest risk — General precautions'}
+                  {form.icra_class === 'II' && 'Low-medium risk — Dust control required'}
+                  {form.icra_class === 'III' && 'Medium-high risk — Containment required'}
+                  {form.icra_class === 'IV' && 'Highest risk — Full containment + negative pressure'}
+                </div>
+              </div>
+            )}
+            <div style={{ marginBottom: '20px' }}>
+              <label style={lbl}>ICRA Matrix Reference</label>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+                <thead>
+                  <tr style={{ background: '#f9fafb' }}>
+                    <th style={{ padding: '8px', border: '1px solid #e5e7eb', textAlign: 'left' }}>Construction Type</th>
+                    <th style={{ padding: '8px', border: '1px solid #e5e7eb' }}>Low</th>
+                    <th style={{ padding: '8px', border: '1px solid #e5e7eb' }}>Medium</th>
+                    <th style={{ padding: '8px', border: '1px solid #e5e7eb' }}>High</th>
+                    <th style={{ padding: '8px', border: '1px solid #e5e7eb' }}>Highest</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(ICRA_MATRIX).map(([type, risks]) => (
+                    <tr key={type} style={{ background: form.construction_type === type ? '#fef2f2' : '#fff' }}>
+                      <td style={{ padding: '8px', border: '1px solid #e5e7eb', fontWeight: '700' }}>Type {type}</td>
+                      {Object.entries(risks).map(([risk, cls]) => (
+                        <td key={risk} style={{ padding: '8px', border: '1px solid #e5e7eb', textAlign: 'center', fontWeight: '800', color: icraColors[cls], background: form.construction_type === type && form.patient_risk_group === risk ? '#fef2f2' : '' }}>
+                          {cls}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={lbl}>ICRA Notes / Special Conditions</label>
+              <textarea style={ta} placeholder='Any special infection control notes...' value={form.icra_notes} onChange={e => set('icra_notes', e.target.value)} />
+            </div>
+            <button onClick={() => setActiveTab('hot')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Hot Work →</button>
+          </div>
+        )}
+
+        {activeTab === 'hot' && (
+          <div style={card}>
+            <div style={secHdr}>Hot Work Permit</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '700' }}>
+                <input type='checkbox' checked={form.hot_work_required} onChange={e => set('hot_work_required', e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                Hot Work Required for this project
+              </label>
+            </div>
+            {form.hot_work_required && (
+              <>
+                <div style={row}>
+                  <div>
+                    <label style={lbl}>Type of Hot Work</label>
+                    <select style={sel} value={form.hot_work_type} onChange={e => set('hot_work_type', e.target.value)}>
+                      <option value=''>-- Select --</option>
+                      <option>Welding</option>
+                      <option>Cutting / Grinding</option>
+                      <option>Brazing / Soldering</option>
+                      <option>Torch work</option>
+                      <option>Other open flame</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Location / Area</label>
+                    <input style={inp} type='text' placeholder='Room/area description' value={form.hot_work_location} onChange={e => set('hot_work_location', e.target.value)} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Fire Watch Name</label>
+                  <input style={inp} type='text' placeholder='Assigned fire watch person' value={form.hot_work_fire_watch} onChange={e => set('hot_work_fire_watch', e.target.value)} />
+                </div>
+                <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                    <input type='checkbox' checked={form.hot_work_suppression_impaired} onChange={e => set('hot_work_suppression_impaired', e.target.checked)} style={{ width: '16px', height: '16px' }} />
+                    Fire suppression system impaired
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
+                    <input type='checkbox' checked={form.hot_work_detector_isolated} onChange={e => set('hot_work_detector_isolated', e.target.checked)} style={{ width: '16px', height: '16px' }} />
+                    Smoke detector isolated
+                  </label>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Hot Work Notes</label>
+                  <textarea style={ta} placeholder='Additional notes...' value={form.hot_work_notes} onChange={e => set('hot_work_notes', e.target.value)} />
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setActiveTab('icra')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
+              <button onClick={() => setActiveTab('confined')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Confined Space →</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'confined' && (
+          <div style={card}>
+            <div style={secHdr}>Confined Space Permit</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '700' }}>
+                <input type='checkbox' checked={form.confined_space_required} onChange={e => set('confined_space_required', e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                Confined Space Work Required
+              </label>
+            </div>
+            {form.confined_space_required && (
+              <>
+                <div style={row}>
+                  <div>
+                    <label style={lbl}>Location / Space Description</label>
+                    <input style={inp} type='text' placeholder='Describe the confined space' value={form.confined_space_location} onChange={e => set('confined_space_location', e.target.value)} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Attendant Name</label>
+                    <input style={inp} type='text' placeholder='Entry attendant' value={form.confined_space_attendant} onChange={e => set('confined_space_attendant', e.target.value)} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Identified Hazards</label>
+                  <textarea style={ta} placeholder='List all identified hazards...' value={form.confined_space_hazards} onChange={e => set('confined_space_hazards', e.target.value)} />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Additional Notes</label>
+                  <textarea style={ta} placeholder='Additional notes...' value={form.confined_space_notes} onChange={e => set('confined_space_notes', e.target.value)} />
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setActiveTab('hot')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
+              <button onClick={() => setActiveTab('energized')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Energized Elec. →</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'energized' && (
+          <div style={card}>
+            <div style={secHdr}>Energized Electrical Work Permit</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '700' }}>
+                <input type='checkbox' checked={form.energized_required} onChange={e => set('energized_required', e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                Energized Electrical Work Required
+              </label>
+            </div>
+            {form.energized_required && (
+              <>
+                <div style={row}>
+                  <div>
+                    <label style={lbl}>Voltage Level</label>
+                    <select style={sel} value={form.energized_voltage} onChange={e => set('energized_voltage', e.target.value)}>
+                      <option value=''>-- Select --</option>
+                      <option>120V</option>
+                      <option>208V</option>
+                      <option>240V</option>
+                      <option>277V</option>
+                      <option>480V</option>
+                      <option>Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Location / Panel</label>
+                    <input style={inp} type='text' placeholder='Panel ID or location' value={form.energized_location} onChange={e => set('energized_location', e.target.value)} />
+                  </div>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Required PPE</label>
+                  <input style={inp} type='text' placeholder='Arc flash rating, gloves, face shield, etc.' value={form.energized_ppe} onChange={e => set('energized_ppe', e.target.value)} />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Additional Notes</label>
+                  <textarea style={ta} placeholder='Additional notes...' value={form.energized_notes} onChange={e => set('energized_notes', e.target.value)} />
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setActiveTab('confined')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
+              <button onClick={() => setActiveTab('ceiling')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Above Ceiling →</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'ceiling' && (
+          <div style={card}>
+            <div style={secHdr}>Above Ceiling Work Permit</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '700' }}>
+                <input type='checkbox' checked={form.above_ceiling_required} onChange={e => set('above_ceiling_required', e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                Above Ceiling Work Required
+              </label>
+            </div>
+            {form.above_ceiling_required && (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Location / Area Description</label>
+                  <input style={inp} type='text' placeholder='Room/area above ceiling' value={form.above_ceiling_location} onChange={e => set('above_ceiling_location', e.target.value)} />
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Fire / Smoke Barriers Status</label>
+                  <select style={sel} value={form.above_ceiling_fire_barriers} onChange={e => set('above_ceiling_fire_barriers', e.target.value)}>
+                    <option value=''>-- Select --</option>
+                    <option>Intact — no barriers will be penetrated</option>
+                    <option>Will be penetrated — restoration plan in place</option>
+                    <option>Already compromised — must be restored</option>
+                  </select>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <label style={lbl}>Additional Notes</label>
+                  <textarea style={ta} placeholder='Additional notes...' value={form.above_ceiling_notes} onChange={e => set('above_ceiling_notes', e.target.value)} />
+                </div>
+              </>
+            )}
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setActiveTab('energized')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
+              <button onClick={() => setActiveTab('checklist')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Daily Checklist →</button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'checklist' && (
+          <div style={card}>
+            <div style={secHdr}>Daily Site Checklist</div>
+            <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px', marginTop: '-10px' }}>
+              Check all items verified and in compliance for today.
+            </p>
+            <div style={{ marginBottom: '24px' }}>
+              {CHECKLIST_ITEMS.map((item, i) => (
+                <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '6px', cursor: 'pointer', marginBottom: '6px', background: form.daily_checklist?.[i] ? '#f0fdf4' : '#f9fafb', border: `1px solid ${form.daily_checklist?.[i] ? '#86efac' : '#e5e7eb'}` }}>
+                  <input type='checkbox' checked={!!form.daily_checklist?.[i]} onChange={e => set('daily_checklist', { ...form.daily_checklist, [i]: e.target.checked })} style={{ width: '18px', height: '18px', accentColor: '#16a34a' }} />
+                  <span style={{ fontSize: '14px', fontWeight: form.daily_checklist?.[i] ? '700' : '400', color: form.daily_checklist?.[i] ? '#15803d' : '#374151' }}>{item}</span>
+                  {form.daily_checklist?.[i] && <span style={{ marginLeft: 'auto', color: '#16a34a', fontSize: '16px' }}>✓</span>}
+                </label>
+              ))}
+            </div>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={lbl}>Completed / Inspected By</label>
+              <input style={inp} type='text' placeholder='Your full name and title' value={form.completed_by} onChange={e => set('completed_by', e.target.value)} />
+            </div>
+            <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '16px', marginBottom: '20px', fontSize: '13px', color: '#374151' }}>
+              <strong>Summary:</strong>{' '}
+              {Object.values(form.daily_checklist || {}).filter(Boolean).length} of {CHECKLIST_ITEMS.length} items verified
+              {form.icra_class && <> · ICRA Class <strong style={{ color: icraColors[form.icra_class] }}>{form.icra_class}</strong></>}
+              {form.hot_work_required && ' · Hot Work ✓'}
+              {form.confined_space_required && ' · Confined Space ✓'}
+              {form.energized_required && ' · Energized Elec. ✓'}
+              {form.above_ceiling_required && ' · Above Ceiling ✓'}
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setActiveTab('ceiling')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
+              <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>💾 Save Draft</button>
+              <button onClick={() => { if (!form.icra_class) { alert('Please complete ICRA Class first.'); setActiveTab('icra'); return; } if (!form.completed_by) { alert('Please enter your name.'); return; } handleSave('complete') }} disabled={saving} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>✅ Submit Assessment</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
