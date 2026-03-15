@@ -262,9 +262,7 @@ export default function Dashboard() {
                 </thead>
                 <tbody>
                   {filtered.map((s, i) => (
-                    <tr key={s.id} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa',cursor:'pointer'}}
-                      onMouseOver={e=>e.currentTarget.style.background='#f0f9ff'}
-                      onMouseOut={e=>e.currentTarget.style.background=i%2===0?'#fff':'#fafafa'}>
+                   <tr key={s.id} onClick={() => router.push('/dashboard/' + s.id)} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa',cursor:'pointer'}}> 
                       <td style={{padding:'12px 16px',fontWeight:'700',color:'#ba0c2f',whiteSpace:'nowrap'}}>{s.doc_id}</td>
                       <td style={{padding:'12px 16px'}}>{s.project_name || '—'}</td>
                       <td style={{padding:'12px 16px'}}>{s.building || '—'}</td>
