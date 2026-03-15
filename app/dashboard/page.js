@@ -291,6 +291,10 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+      <div style={{display:'flex',gap:'12px',padding:'16px 24px',borderTop:'1px solid #e5e7eb'}}>
+        <a href='/dashboard' style={{background:'#6b7280',color:'#fff',padding:'10px 20px',borderRadius:'6px',textDecoration:'none',fontWeight:'700',fontSize:'13px'}}>← Back to Dashboard</a>
+        <button onClick={()=>window.print()} style={{background:'#007a86',color:'#fff',border:'none',borderRadius:'6px',padding:'10px 20px',fontWeight:'700',fontSize:'13px',cursor:'pointer'}}>🖨️ Print</button>
+      </div>
     </div>
   )
 }
