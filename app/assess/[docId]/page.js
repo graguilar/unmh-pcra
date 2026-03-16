@@ -268,6 +268,15 @@ export default function AssessPage() {
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f3f4f6' }}>
+      <style>{`
+        @media print {
+          @page { margin: 1cm; size: A4; }
+          button { display: none !important; }
+          div[style*="background: #ba0c2f"] { background: #ba0c2f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          div[style*="background: #007a86"] { background: #007a86 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          input, textarea, select { border: 1px solid #ccc !important; }
+        }
+      `}</style>
 
       {/* Header */}
       <div style={{ background: '#ba0c2f', color: '#fff', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
