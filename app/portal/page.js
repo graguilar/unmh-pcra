@@ -215,7 +215,7 @@ export default function PortalPage() {
                     <tbody>
                       {submissions.map((s, i) => (
                         <tr key={s.id} style={{ borderBottom: '1px solid #f3f4f6', background: i % 2 === 0 ? '#fff' : '#fafafa' }}>
-                          <td style={{ padding: '12px 16px', fontWeight: '700', color: '#ba0c2f' }}>{s.doc_id}</td>
+                          <td style={{ padding: '12px 16px', fontWeight: '700', color: '#ba0c2f' }}><a href={`/assess/${s.doc_id}`} style={{ color: '#ba0c2f', textDecoration: 'none' }}>{s.doc_id}</a></td>
                           <td style={{ padding: '12px 16px' }}>{s.project_name || '—'}</td>
                           <td style={{ padding: '12px 16px' }}>{s.building || '—'}</td>
                           <td style={{ padding: '12px 16px' }}>{s.project_manager || '—'}</td>
