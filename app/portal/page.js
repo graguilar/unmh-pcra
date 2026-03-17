@@ -4,10 +4,19 @@ import { supabase } from '../lib/supabase'
 
 export default function PortalPage() {
   const [email, setEmail] = useState('')
-  const [submitted, setSubmitted] = useState(false)
+  const [submitted, setSubmitted] = useState(() => !!localStorage.getItem('portal_email'))
   const [user, setUser] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem('portal_email')
+    if (saved) {
+      setLoading(true)
+      supabase.from('submissions').select('*').eq('requester_email', saved).order('created_at', { ascending: false })
+        .then(({ data }) => { setSubmissions(data || []); setUser(saved); setSubmitted(true); setLoading(false) })
+    }
+  }, [])
 
   async function handleEmailSubmit(e) {
     e.preventDefault()
@@ -24,6 +33,7 @@ export default function PortalPage() {
     setUser(email)
     setSubmitted(true)
     setLoading(false)
+    localStorage.setItem('portal_email', email)
   }
 
   const menuItems = [
@@ -46,21 +56,21 @@ export default function PortalPage() {
       title: 'Update PCRA / Addendum',
       desc: 'Add updates or amendments to an existing assessment',
       color: '#007a86',
-      href: '#my-pcras',
+      href: submissions?.[0]?.doc_id ? `/assess/${submissions[0].doc_id}` : '#',
     },
     {
       icon: '🔧',
       title: 'Update Permit / Addendum',
       desc: 'Amend an existing permit',
       color: '#007a86',
-      href: '#my-pcras',
+      href: submissions?.[0]?.doc_id ? `/assess/${submissions[0].doc_id}` : '#',
     },
     {
       icon: '🖨️',
       title: 'Print PCRA',
       desc: 'Print or save your assessment as PDF',
       color: '#007a86',
-      href: '#my-pcras',
+      href: submissions?.[0]?.doc_id ? `/assess/${submissions[0].doc_id}` : '#',
     },
     {
       icon: '📚',
@@ -88,7 +98,8 @@ export default function PortalPage() {
       title: 'My Meeting History',
       desc: 'View past and upcoming PCRA meetings',
       color: '#5b21b6',
-      href: '#my-pcras',
+      href: '#my-pcras-section',
+
     },
     {
       icon: '❓',
@@ -174,7 +185,8 @@ export default function PortalPage() {
             {/* Menu grid */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '12px', marginBottom: '24px' }}>
               {menuItems.map((item, i) => (
-                <a key={i} href={item.href}
+                
+<a key={i} href={item.href} onClick={item.onClick}
                   style={{ background: '#fff', borderRadius: '8px', padding: '18px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '14px', borderLeft: `4px solid ${item.color}`, transition: 'box-shadow 0.15s', cursor: 'pointer' }}
                   onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)'}
                   onMouseOut={e => e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)'}>
@@ -189,7 +201,7 @@ export default function PortalPage() {
             </div>
 
             {/* My PCRAs section */}
-            <div id="my-pcras" style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <div id="my-pcras-section" style={{ background: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
               <div style={{ background: '#007a86', color: '#fff', padding: '12px 20px', fontWeight: '700', fontSize: '13px', letterSpacing: '0.05em', textTransform: 'uppercase' }}>
                 My PCRA Submissions
               </div>
