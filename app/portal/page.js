@@ -4,12 +4,13 @@ import { supabase } from '../lib/supabase'
 
 export default function PortalPage() {
   const [email, setEmail] = useState('')
-  const [submitted, setSubmitted] = useState(() => !!localStorage.getItem('portal_email'))
+  const [submitted, setSubmitted] = useState(false)
   const [user, setUser] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const saved = localStorage.getItem('portal_email')
     if (saved) {
       setLoading(true)
