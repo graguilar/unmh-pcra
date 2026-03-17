@@ -1,0 +1,180 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { useParams } from 'next/navigation'
+import { supabase } from '../../lib/supabase'
+
+export default function ContactPage() {
+  const params = useParams()
+  const docId = params.docId
+
+  const [step, setStep] = useState('verify') // verify | form | sent
+  const [email, setEmail] = useState('')
+  const [submission, setSubmission] = useState(null)
+  const [verifyError, setVerifyError] = useState('')
+  const [verifying, setVerifying] = useState(false)
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [senderName, setSenderName] = useState('')
+  const [sending, setSending] = useState(false)
+
+  async function handleVerify() {
+    if (!email) return
+    setVerifying(true)
+    setVerifyError('')
+    const { data, error } = await supabase
+      .from('submissions')
+      .select('*')
+      .eq('doc_id', docId)
+      .eq('requester_email', email.toLowerCase().trim())
+      .single()
+
+    if (error || !data) {
+      setVerifyError('No matching submission found. Please check your Doc ID and email address.')
+      setVerifying(false)
+      return
+    }
+    setSubmission(data)
+    setSenderName(data.requester_name || '')
+    setStep('form')
+    setVerifying(false)
+  }
+
+  async function handleSend() {
+    if (!message.trim()) { alert('Please enter a message'); return }
+    if (!senderName.trim()) { alert('Please enter your name'); return }
+    setSending(true)
+
+    const { error: msgError } = await supabase.from('messages').insert({
+      doc_id: docId,
+      submission_id: submission.id,
+      sender_name: senderName,
+      sender_email: email.toLowerCase().trim(),
+      message: message.trim(),
+      direction: 'inbound'
+    })
+
+    if (msgError) {
+      alert('Error sending message. Please try again.')
+      setSending(false)
+      return
+    }
+
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'contact_coordinator',
+        docId,
+        projectName: submission.project_name,
+        senderName,
+        senderEmail: email,
+        message: message.trim(),
+        requesterEmail: email
+      })
+    })
+
+    setStep('sent')
+    setSending(false)
+  }
+
+  const headerStyle = { background: '#ba0c2f', color: '#fff', padding: '16px 24px', display: 'flex', alignItems: 'center', gap: '12px' }
+  const cardStyle = { background: '#fff', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.1)', padding: '32px', maxWidth: '560px', margin: '32px auto' }
+  const inputStyle = { width: '100%', padding: '10px 12px', border: '1.5px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'inherit' }
+  const labelStyle = { display: 'block', fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }
+  const btnRed = { background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '11px 28px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }
+  const btnGray = { background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '11px 28px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }
+
+  return (
+    <div style={{ minHeight: '100vh', background: '#f3f4f6', fontFamily: 'system-ui, sans-serif' }}>
+      {/* Header */}
+      <div style={headerStyle}>
+        <div>
+          <div style={{ fontWeight: '900', fontSize: '16px', letterSpacing: '0.05em' }}>UNMH PCRA</div>
+          <div style={{ fontSize: '12px', opacity: 0.85 }}>Contact PCRA Team</div>
+        </div>
+      </div>
+
+      {/* STEP 1 — Verify identity */}
+      {step === 'verify' && (
+        <div style={cardStyle}>
+          <h2 style={{ margin: '0 0 6px', fontSize: '22px', fontWeight: '900', color: '#111' }}>Contact PCRA Team</h2>
+          <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: '14px' }}>
+            Regarding submission <strong style={{ color: '#ba0c2f' }}>{docId}</strong>
+          </p>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Email address used when scheduling</label>
+            <input
+              style={inputStyle}
+              type="email"
+              placeholder="your@email.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleVerify()}
+            />
+          </div>
+          {verifyError && (
+            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', padding: '10px 14px', color: '#dc2626', fontSize: '13px', marginBottom: '16px' }}>
+              {verifyError}
+            </div>
+          )}
+          <button onClick={handleVerify} disabled={verifying} style={{ ...btnRed, opacity: verifying ? 0.7 : 1 }}>
+            {verifying ? 'Verifying...' : 'Continue →'}
+          </button>
+        </div>
+      )}
+
+      {/* STEP 2 — Message form */}
+      {step === 'form' && submission && (
+        <div style={cardStyle}>
+          {/* Submission summary */}
+          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '6px', padding: '14px 16px', marginBottom: '24px', fontSize: '13px' }}>
+            <div style={{ fontWeight: '700', color: '#374151', marginBottom: '4px' }}>📋 {submission.project_name}</div>
+            <div style={{ color: '#6b7280' }}>{submission.building} · {submission.doc_id}</div>
+            <div style={{ color: '#6b7280' }}>Status: <span style={{ fontWeight: '700', color: '#111' }}>{submission.status || 'Submitted'}</span></div>
+          </div>
+
+          <h2 style={{ margin: '0 0 20px', fontSize: '20px', fontWeight: '900', color: '#111' }}>Send a Message</h2>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Your name</label>
+            <input style={inputStyle} type="text" placeholder="Full name" value={senderName} onChange={e => setSenderName(e.target.value)} />
+          </div>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Message</label>
+            <textarea
+              style={{ ...inputStyle, height: '140px', resize: 'vertical' }}
+              placeholder="Type your question or message here…"
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button onClick={() => setStep('verify')} style={btnGray}>← Back</button>
+            <button onClick={handleSend} disabled={sending} style={{ ...btnRed, opacity: sending ? 0.7 : 1 }}>
+              {sending ? 'Sending...' : '✉️ Send Message'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* STEP 3 — Confirmation */}
+      {step === 'sent' && (
+        <div style={{ ...cardStyle, textAlign: 'center' }}>
+          <div style={{ fontSize: '56px', marginBottom: '12px' }}>✅</div>
+          <h2 style={{ margin: '0 0 8px', fontSize: '22px', fontWeight: '900', color: '#111' }}>Message Sent!</h2>
+          <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '24px' }}>
+            A confirmation has been sent to <strong>{email}</strong>. The PCRA team will respond within 1–2 business days.
+          </p>
+          <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '6px', padding: '14px 16px', marginBottom: '24px', fontSize: '13px', color: '#166534' }}>
+            Your Doc ID: <strong>{docId}</strong> — save this for all future correspondence.
+          </div>
+          <a href="/portal" style={{ ...btnRed, textDecoration: 'none', display: 'inline-block' }}>
+            Go to My Portal →
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
