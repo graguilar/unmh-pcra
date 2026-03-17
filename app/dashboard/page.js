@@ -144,6 +144,12 @@ export default function Dashboard() {
               <button onClick={exportCSV} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.4)',borderRadius:'6px',padding:'7px 14px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>
                 📥 Export CSV
               </button>
+              <a href='/reports' style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.4)',borderRadius:'6px',padding:'7px 14px',fontSize:'12px',fontWeight:'700',textDecoration:'none'}}>
+                📊 Reports
+              </a>
+              <a href='/admin' style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.4)',borderRadius:'6px',padding:'7px 14px',fontSize:'12px',fontWeight:'700',textDecoration:'none'}}>
+                ⚙️ Admin
+              </a>
   
         </div>
       </div>
