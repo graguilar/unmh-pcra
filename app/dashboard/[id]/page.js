@@ -66,6 +66,19 @@ export default function SubmissionDetail() {
       action: 'Status changed to ' + status,
       performed_by: 'Coordinator',
     })
+    if (submission?.requester_email) {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'status_change',
+          docId: submission.doc_id,
+          projectName: submission.project_name,
+          requesterEmail: submission.requester_email,
+          newStatus: status,
+        })
+      })
+    }
     setSavedMsg('Status saved!')
     setTimeout(() => setSavedMsg(''), 3000)
     setSavingStatus(false)
