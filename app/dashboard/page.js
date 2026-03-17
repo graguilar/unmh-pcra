@@ -37,6 +37,23 @@ export default function Dashboard() {
     setLoading(false)
   }
 
+  function exportCSV() {
+    const headers = ['Doc ID','Project','Building','Floor','PM','Status','ICRA','Meeting Date','Requestor','Email','Created']
+    const rows = filtered.map(s => [
+      s.doc_id, s.project_name, s.building, s.floor, s.project_manager,
+      s.status, s.icra_class, s.meeting_date, s.requester_name, s.requester_email,
+      new Date(s.created_at).toLocaleDateString()
+    ])
+    const csv = [headers, ...rows].map(r => r.map(v => `"${v || ''}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `pcra-submissions-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   function applyFilters() {
     let data = [...submissions]
 
@@ -123,7 +140,11 @@ export default function Dashboard() {
           <span style={{fontSize:'13px',opacity:'0.85'}}>{user?.email}</span>
           <button onClick={handleLogout} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.4)',borderRadius:'6px',padding:'6px 14px',cursor:'pointer',fontSize:'13px',fontWeight:'600'}}>
             Sign Out
-          </button>
+              </button>
+              <button onClick={exportCSV} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.4)',borderRadius:'6px',padding:'7px 14px',fontSize:'12px',fontWeight:'700',cursor:'pointer'}}>
+                📥 Export CSV
+              </button>
+  
         </div>
       </div>
 
