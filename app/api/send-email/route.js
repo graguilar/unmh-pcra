@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = 'UNMH PCRA <onboarding@resend.dev>'
-const COORDINATOR_EMAIL = 'graguilar@salud.unm.edu'
+const COORDINATOR_EMAIL = 'griot7070@gmail.com'
 
 export async function POST(req) {
   try {
