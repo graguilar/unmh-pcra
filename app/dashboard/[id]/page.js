@@ -285,6 +285,7 @@ export default function SubmissionDetail() {
         <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
           <a href='/dashboard' style={{ background: '#6b7280', color: '#fff', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '700', fontSize: '13px' }}>← Back to Dashboard</a>
           <a href={`/assess/${s.doc_id}`} style={{ background: '#007a86', color: '#fff', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '700', fontSize: '13px' }}>📋 Open Assessment</a>
+<a href={`/poster/${s.doc_id}`} style={{ background: '#1f2937', color: '#fff', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '700', fontSize: '13px' }}>📱 Print Poster</a>
           <button onClick={() => window.print()} style={{ background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>🖨️ Print</button>
         </div>
       </div>

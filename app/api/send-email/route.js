@@ -145,6 +145,36 @@ export async function POST(req) {
       })
     }
 
+    // Daily checklist notification to project manager
+    if (type === 'daily_checklist') {
+      await resend.emails.send({
+        from: FROM,
+        to: COORDINATOR_EMAIL,
+        subject: `Daily Checklist Submitted — ${body.docId} · ${body.checklistType}`,
+        html: `
+          <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;">
+            <div style="background:#007a86;color:#fff;padding:20px 24px;">
+              <h2 style="margin:0;font-size:18px;">Daily Checklist Submitted</h2>
+            </div>
+            <div style="padding:24px;background:#f9fafb;border:1px solid #e5e7eb;">
+              <table style="width:100%;border-collapse:collapse;font-size:14px;">
+                <tr><td style="padding:8px 0;font-weight:700;width:160px;">Doc ID:</td><td style="color:#ba0c2f;font-weight:800;">${body.docId}</td></tr>
+                <tr><td style="padding:8px 0;font-weight:700;">Project:</td><td>${body.projectName}</td></tr>
+                <tr><td style="padding:8px 0;font-weight:700;">Building:</td><td>${body.building}</td></tr>
+                <tr><td style="padding:8px 0;font-weight:700;">Checklist:</td><td>${body.checklistType}</td></tr>
+                <tr><td style="padding:8px 0;font-weight:700;">Completed By:</td><td>${body.completedBy}</td></tr>
+                <tr><td style="padding:8px 0;font-weight:700;">Items Verified:</td><td>${body.checkedCount} of ${body.totalItems}</td></tr>
+                ${body.notes ? `<tr><td style="padding:8px 0;font-weight:700;">Notes:</td><td>${body.notes}</td></tr>` : ''}
+              </table>
+              <div style="margin-top:20px;">
+                <a href="https://unmh-pcra.vercel.app/dashboard" style="background:#007a86;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px;">View Dashboard →</a>
+              </div>
+            </div>
+          </div>
+        `
+      })
+    }
+
     return Response.json({ success: true })
   } catch (error) {
     console.error('Email error:', error)
