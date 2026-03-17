@@ -177,7 +177,23 @@ export default function SubmitPage() {
         })
       })
 
-      setStep(3)
+      await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'new_submission',
+        docId,
+        projectName: form.projectName,
+        building: form.building,
+        requesterName: form.requesterName,
+        requesterEmail: form.requesterEmail,
+        meetingDate: form.meetingDate,
+        meetingTime: form.meetingTime,
+        projectManager: form.projectManager,
+      })
+    })
+
+    setStep(3)
     } catch (err) {
       alert('Error submitting: ' + err.message)
     }
