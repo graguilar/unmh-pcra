@@ -64,7 +64,7 @@ export default function PosterPage() {
       <style>{`
         @media print {
           .no-print { display: none !important; }
-          @page { margin: 0.5cm; size: letter; }
+          @page { margin: 1cm; size: 11in 17in; }
           body { margin: 0; }
         }
       `}</style>
