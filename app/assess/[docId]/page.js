@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
+import Disclaimer from '../../components/Disclaimer'
 
 const ICRA_MATRIX = {
   'A': { 'Low': 'I', 'Medium': 'I', 'High': 'II', 'Highest': 'II' },
@@ -21,6 +22,7 @@ export default function AssessPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [assessmentId, setAssessmentId] = useState(null)
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
 
   const [form, setForm] = useState({
     // Form 1 - Project Info
@@ -265,6 +267,7 @@ export default function AssessPage() {
   ]
 
   if (loading) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'system-ui' }}>Loading assessment...</div>
+  if (!disclaimerAccepted) return <Disclaimer docId={docId} projectName={submission?.project_name} onAccept={() => setDisclaimerAccepted(true)} />
   if (!submission) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'system-ui', color: '#dc2626' }}>Submission not found: {docId}</div>
 
   return (
