@@ -165,7 +165,8 @@ export default function AssessPage() {
     }
   }, [form.construction_type, form.patient_risk_group])
 
-  function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
+  const isLocked = form.status === 'complete'
+  function set(key, val) { if (isLocked) return; setForm(f => ({ ...f, [key]: val })) }
 
   async function handleSave(status = 'draft') {
     setSaving(true)
@@ -268,16 +269,18 @@ export default function AssessPage() {
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f3f4f6' }}>
-      <style>{`
-        @media print {
-          @page { margin: 1cm; size: A4; }
-          button { display: none !important; }
-          div[style*="background: #ba0c2f"] { background: #ba0c2f !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          div[style*="background: #007a86"] { background: #007a86 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          input, textarea, select { border: 1px solid #ccc !important; }
-        }
-      `}</style>
 
+      {/* Lock Banner */}
+      {isLocked && (
+        <div style={{ background: '#1f2937', color: '#fff', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '3px solid #ba0c2f' }}>
+          <span style={{ fontSize: '20px' }}>🔒</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '900', fontSize: '13px' }}>DOCUMENT LOCKED — Submitted {form.completed_at ? new Date(form.completed_at).toLocaleDateString() : ''}</div>
+            <div style={{ fontSize: '11px', opacity: 0.8 }}>This assessment is locked and cannot be edited. To make changes, create an Addendum.</div>
+          </div>
+          <button style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 16px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>+ Create Addendum</button>
+        </div>
+      )}
       {/* Header */}
       <div style={{ background: '#ba0c2f', color: '#fff', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -286,9 +289,9 @@ export default function AssessPage() {
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {saved && <span style={{ background: '#16a34a', color: '#fff', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' }}>✓ Saved</span>}
-          <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '6px', padding: '6px 14px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+          {!isLocked && <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '6px', padding: '6px 14px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
             {saving ? 'Saving...' : '💾 Save Draft'}
-          </button>
+          </button>}
         </div>
       </div>
 
