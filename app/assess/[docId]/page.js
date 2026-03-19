@@ -30,6 +30,8 @@ export default function AssessPage() {
     project_type_repair: false, project_type_renovation: false, project_type_modification: false,
     project_type_reconstruction: false, project_type_addition: false,
     scope_of_work: '',
+    pcra_expiration_date: '',
+    pcra_renewal_required: '',
     // Barrier
     barrier_duration: '', barrier_comments: '',
     barrier_type_plastic: false, barrier_type_gypsum_single: false, barrier_type_gypsum_double: false,
@@ -361,6 +363,28 @@ export default function AssessPage() {
                 </div>
               </div>
               <div><label style={lbl}>Scope of Work</label><textarea style={ta} value={form.scope_of_work} onChange={e => set('scope_of_work', e.target.value)} /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+              <div>
+                <label style={lbl}>PCRA Expiration Date *</label>
+                <input style={{ ...inp, borderColor: '#ba0c2f' }} type='date' value={form.pcra_expiration_date} onChange={e => set('pcra_expiration_date', e.target.value)} />
+                <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>PM notified 7 days before, 24hrs before, day-of, and 24hrs after expiration</div>
+              </div>
+              <div>
+                <label style={lbl}>Renewal Required?</label>
+                <select style={sel} value={form.pcra_renewal_required} onChange={e => set('pcra_renewal_required', e.target.value)}>
+                  <option value=''>-- Assess at expiration --</option>
+                  <option value='yes'>Yes — renewal planned</option>
+                  <option value='no'>No — project complete at expiration</option>
+                  <option value='tbd'>TBD — assess closer to date</option>
+                </select>
+              </div>
+              <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', padding: '10px 12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#92400e', marginBottom: '4px' }}>Expiration Notifications</div>
+                <div style={{ fontSize: '10px', color: '#78350f', lineHeight: '1.6' }}>
+                  7 days before · 24 hrs before · Day of expiration · 24 hrs after (urgent) · 48 hrs after (escalation)
+                </div>
+              </div>
             </div>
 
             {/* General Requirements */}
