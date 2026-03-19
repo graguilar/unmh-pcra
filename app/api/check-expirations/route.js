@@ -20,12 +20,25 @@ export async function GET(request) {
 
     const todayStr = today.toISOString().split('T')[0]
     const in7Str = in7Days.toISOString().split('T')[0]
+const { data: expiring, error } = await supabase
+      .from('submissions')
+      .select('doc_id, status, expiration_date')
+      .in('status', ['submitted', 'approved', 'in_progress'])
+      .not('expiration_date', 'is', null)
+      .lte('expiration_date', in7Str)
 
+    return NextResponse.json({ 
+      debug: true,
+      in7Str,
+      count: expiring?.length,
+      error: error?.message,
+      rows: expiring || []
+    })
     // Find submissions expiring within 7 days or already expired
     const { data: expiring, error } = await supabase
       .from('submissions')
       .select('*')
-      .in('status', ['approved', 'in_progress'])
+      .in('status', ['submitted', 'approved', 'in_progress'])
       .not('expiration_date', 'is', null)
       .lte('expiration_date', in7Str)
 
