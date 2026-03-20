@@ -42,7 +42,7 @@ export async function GET(request) {
         },
         body: JSON.stringify({
           from: 'UNMH PCRA <onboarding@resend.dev>',
-          to: [sub.requester_email],
+          to: ['griot7070@gmail.com'],
           subject: isExpired
             ? `EXPIRED: PCRA ${sub.doc_id} has expired`
             : `Action Required: PCRA ${sub.doc_id} expires in ${daysLeft} day(s)`,
