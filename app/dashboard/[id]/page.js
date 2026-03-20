@@ -287,6 +287,10 @@ export default function SubmissionDetail() {
           <a href={`/assess/${s.doc_id}`} style={{ background: '#007a86', color: '#fff', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '700', fontSize: '13px' }}>📋 Open Assessment</a>
 <a href={`/poster/${s.doc_id}`} style={{ background: '#1f2937', color: '#fff', padding: '10px 20px', borderRadius: '6px', textDecoration: 'none', fontWeight: '700', fontSize: '13px' }}>📱 Print Poster</a>
           <button onClick={() => window.print()} style={{ background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>🖨️ Print</button>
+          <button onClick={() => router.push(`/addendum/${submission.doc_id}`)}
+  style={{ background: '#d97706', color: '#fff', border: 'none', borderRadius: '6px', padding: '8px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: 700 }}>
+  + Addendum
+</button>
         </div>
       </div>
     </div>
