@@ -36,6 +36,7 @@ export default function SubmitPage() {
     meetingDate: '',
     meetingTime: '',durationNum: '',
     durationUnit: 'weeks',
+priority: 'standard',
   })
 
   useEffect(() => {
@@ -125,6 +126,7 @@ export default function SubmitPage() {
         building: form.building,
         location: form.floor,
         status: 'submitted',
+priority: form.priority || 'standard',
       }])
 
       if (error) throw error
@@ -315,7 +317,32 @@ export default function SubmitPage() {
                 <div>
                   <label style={labelStyle}>Estimated Start Date</label>
                   <input style={inputStyle} type="date" value={form.startDate} onChange={e => update('startDate', e.target.value)} />
-                </div>
+                </div><div>
+  <label style={labelStyle}>Request Priority *</label>
+  <div style={{ display: 'flex', gap: '10px' }}>
+    {['standard', 'urgent', 'emergency'].map(p => (
+      <button key={p} type="button"
+        onClick={() => update('priority', p)}
+        style={{
+          flex: 1, padding: '10px', borderRadius: '6px', cursor: 'pointer', fontWeight: 700,
+          fontSize: '13px', textTransform: 'capitalize', border: '2px solid',
+          borderColor: form.priority === p ? (p === 'standard' ? '#007a86' : p === 'urgent' ? '#d97706' : '#ba0c2f') : '#e2e8f0',
+          background: form.priority === p ? (p === 'standard' ? '#f0fdfa' : p === 'urgent' ? '#fffbeb' : '#fef2f2') : '#fff',
+          color: form.priority === p ? (p === 'standard' ? '#007a86' : p === 'urgent' ? '#d97706' : '#ba0c2f') : '#6b7280',
+        }}>
+        {p === 'standard' ? '📋 Standard' : p === 'urgent' ? '⚡ Urgent' : '🚨 Emergency'}
+      </button>
+    ))}
+  </div>
+  {form.priority !== 'standard' && (
+    <div style={{ marginTop: '8px', padding: '8px 12px', borderRadius: '6px', fontSize: '12px',
+      background: form.priority === 'urgent' ? '#fffbeb' : '#fef2f2',
+      color: form.priority === 'urgent' ? '#d97706' : '#ba0c2f',
+      border: `1px solid ${form.priority === 'urgent' ? '#d97706' : '#ba0c2f'}` }}>
+      {form.priority === 'urgent' ? '⚡ Urgent requests are reviewed within 24–48 hours. A coordinator will contact you immediately.' : '🚨 Emergency requests trigger immediate notification to all coordinators. Use only for critical facility needs.'}
+    </div>
+  )}
+</div>
                 <div>
                   <div style={{gridColumn:'span 2'}}>
   <label style={labelStyle}>Project Duration</label>

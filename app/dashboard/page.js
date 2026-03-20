@@ -290,7 +290,11 @@ export default function Dashboard() {
                 <tbody>
                   {filtered.map((s, i) => (
                    <tr key={s.id} onClick={() => router.push('/dashboard/' + s.id)} style={{borderBottom:'1px solid #f3f4f6',background:i%2===0?'#fff':'#fafafa',cursor:'pointer'}}> 
-                      <td style={{padding:'12px 16px',fontWeight:'700',color:'#ba0c2f',whiteSpace:'nowrap'}}>{s.doc_id}</td>
+   <td style={{padding:'12px 16px',fontWeight:'700',color:'#ba0c2f',whiteSpace:'nowrap'}}>
+  <span>{s.doc_id}</span>
+  {s.priority === 'urgent' && <span style={{marginLeft:'6px',fontSize:'10px',fontWeight:'700',background:'#fffbeb',color:'#d97706',border:'1px solid #d97706',padding:'1px 6px',borderRadius:'4px'}}>⚡ URGENT</span>}
+  {s.priority === 'emergency' && <span style={{marginLeft:'6px',fontSize:'10px',fontWeight:'700',background:'#fef2f2',color:'#ba0c2f',border:'1px solid #ba0c2f',padding:'1px 6px',borderRadius:'4px'}}>🚨 EMERGENCY</span>}
+</td>
                       <td style={{padding:'12px 16px'}}>{s.project_name || '—'}</td>
                       <td style={{padding:'12px 16px'}}>{s.building || '—'}</td>
                       <td style={{padding:'12px 16px',whiteSpace:'nowrap'}}>{s.project_manager || '—'}</td>
