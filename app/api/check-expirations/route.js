@@ -69,7 +69,8 @@ export async function GET(request) {
         })
       })
 
-      results.push({ doc_id: sub.doc_id, expired: isExpired, daysLeft, emailSent: emailRes.ok })
+      const emailBody = await emailRes.json()
+results.push({ doc_id: sub.doc_id, expired: isExpired, daysLeft, emailSent: emailRes.ok, emailError: emailBody })
     }
 
     return NextResponse.json({ checked: expiring?.length || 0, results })
