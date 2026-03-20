@@ -42,7 +42,7 @@ export async function GET(request) {
         },
         body: JSON.stringify({
           from: 'UNMH PCRA <onboarding@resend.dev>',
-          to: ['griot7070@gmail.com'],
+          to: [sub.requester_email],
           subject: isExpired
             ? `EXPIRED: PCRA ${sub.doc_id} has expired`
             : `Action Required: PCRA ${sub.doc_id} expires in ${daysLeft} day(s)`,
@@ -69,8 +69,7 @@ export async function GET(request) {
         })
       })
 
-      const emailBody = await emailRes.json()
-results.push({ doc_id: sub.doc_id, expired: isExpired, daysLeft, emailSent: emailRes.ok, emailError: emailBody })
+      results.push({ doc_id: sub.doc_id, expired: isExpired, daysLeft, emailSent: emailRes.ok })
     }
 
     return NextResponse.json({ checked: expiring?.length || 0, results })
