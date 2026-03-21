@@ -364,7 +364,7 @@ priority: form.priority || 'standard',
 </div>
                 <div>
                   <div style={{gridColumn:'span 2'}}>
-  <label style={labelStyle}>Project Duration *</label>
+  <<label style={labelStyle}>Project Duration *</label>
   <div style={{display:'flex',gap:'10px'}}>
     <input 
       style={{...inputStyle, width:'120px'}} 
