@@ -205,7 +205,6 @@ if (type === 'urgent_submission') {
     `
   })
 }
-findstr /n "new_submission" "app\submit\page.js"
     return Response.json({ success: true })
   } catch (error) {
     console.error('Email error:', error)
