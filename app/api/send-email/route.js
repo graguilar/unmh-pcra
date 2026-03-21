@@ -205,6 +205,7 @@ if (type === 'urgent_submission') {
     `
   })
     return Response.json({ success: true })
+}
   } catch (error) {
     console.error('Email error:', error)
     return Response.json({ error: error.message }, { status: 500 })
