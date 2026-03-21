@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
+import Disclaimer from '../../components/Disclaimer'
 
 const ICRA_MATRIX = {
   'A': { 'Low': 'I', 'Medium': 'I', 'High': 'II', 'Highest': 'II' },
@@ -10,71 +11,152 @@ const ICRA_MATRIX = {
   'D': { 'Low': 'III', 'Medium': 'III', 'High': 'IV', 'Highest': 'IV' },
 }
 
-const CHECKLIST_ITEMS = [
-  'Barriers/containment intact',
-  'Negative air pressure verified',
-  'HEPA filtration operating',
-  'Debris removed from work area',
-  'Sticky mats in place at exits',
-  'Workers using proper PPE',
-  'No visible dust migration',
-  'All penetrations sealed',
-  'Fire exits unobstructed',
-  'Signage posted at all entrances',
-]
+const icraColors = { 'I': '#16a34a', 'II': '#ca8a04', 'III': '#ea580c', 'IV': '#dc2626' }
 
 export default function AssessPage() {
   const params = useParams()
   const docId = params.docId
   const [submission, setSubmission] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('icra')
+  const [step, setStep] = useState(1)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [assessmentId, setAssessmentId] = useState(null)
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(false)
 
   const [form, setForm] = useState({
-    construction_type: '',
-    patient_risk_group: '',
-    icra_class: '',
-    icra_notes: '',
-    hot_work_required: false,
-    hot_work_type: '',
-    hot_work_location: '',
-    hot_work_fire_watch: '',
-    hot_work_suppression_impaired: false,
-    hot_work_detector_isolated: false,
-    hot_work_notes: '',
-    confined_space_required: false,
-    confined_space_location: '',
-    confined_space_hazards: '',
-    confined_space_attendant: '',
-    confined_space_notes: '',
+    // Form 1 - Project Info
+    contractors: '', gc_contact: '', project_description: '',
+    project_type_repair: false, project_type_renovation: false, project_type_modification: false,
+    project_type_reconstruction: false, project_type_addition: false,
+    scope_of_work: '',
+    pcra_expiration_date: '',
+    pcra_renewal_required: '',
+    // Barrier
+    barrier_duration: '', barrier_comments: '',
+    barrier_type_plastic: false, barrier_type_gypsum_single: false, barrier_type_gypsum_double: false,
+    barrier_type_comments: '',
+    // Risk Items
+    bh_required: false, bh_notes: '',
+    crane_required: false, crane_notes: '',
+    crane_permit_project_name: '', crane_permit_location: '', crane_permit_start_date: '',
+    crane_permit_manager: '', crane_permit_duration: '', crane_permit_contractors: '',
+    crane_permit_description: '', crane_permit_notes: '',
+    asbestos_required: false, asbestos_notes: '',
+    noise_required: false, noise_departments: '', noise_reduction: '',
+    vibration_required: false, vibration_departments: '', vibration_reduction: '',
+    odors_required: false, odors_departments: '', odors_reduction: '',
+    // Air Quality
+    air_quality_plan: '',
+    // Utilities
+    util_fire_alarm: false, util_fire_suppression: false, util_electrical: false,
+    util_water: false, util_medical_gas: false, util_sewage: false, util_hvac: false,
+    util_comments: '', pm_inspection_frequency: '',
+    // Safety
+    hazmat_required: false, hazmat_notes: '',
+    scaffold_required: false, scaffold_notes: '',
+    fall_required: false, fall_notes: '',
+    lift_required: false, lift_notes: '',
+    loto_required: false, loto_notes: '',
+    loto_permit_project_name: '', loto_permit_location: '', loto_permit_start_date: '',
+    loto_permit_manager: '', loto_permit_contractors: '', loto_permit_description: '',
+    loto_permit_energy_sources: '', loto_permit_procedures: '', loto_permit_notes: '',
+    // Energized Electrical Permit
     energized_required: false,
-    energized_voltage: '',
-    energized_location: '',
-    energized_ppe: '',
-    energized_notes: '',
+    energized_project_name: '', energized_location_project: '', energized_start_date: '',
+    energized_manager: '', energized_room: '', energized_duration: '',
+    energized_panel_description: '', energized_equipment: '', energized_other_equipment: '',
+    energized_foreign_voltage: '', energized_contractors: '', energized_gc_contact: '',
+    energized_work_description: '',
+    energized_j1_power_off: '', energized_j1_power_off_notes: '',
+    energized_j2_life_support: '', energized_j2_notes: '',
+    energized_j3_infeasible: '', energized_j3_notes: '',
+    energized_justification: '', energized_special_considerations: '',
+    energized_loto_50_600: '', energized_loto_601_15k: '',
+    energized_doc_circuits: false, energized_doc_schematic: false,
+    energized_doc_flash_hazard: false, energized_doc_restriction: false,
+    energized_doc_location_map: false, energized_doc_step_by_step: false,
+    energized_doc_licenses: false, energized_doc_cpr: false,
+    energized_req_job_procedures: false, energized_req_safe_work: false,
+    energized_req_restriction: false, energized_req_briefing: false, energized_req_backup: false,
+    energized_shock_voltage: '', energized_shock_limited: '', energized_shock_restricted: '',
+    energized_shock_ppe: '', energized_arc_label: '', energized_arc_distance: '',
+    energized_arc_energy: '', energized_arc_ppe: '', energized_arc_boundary: '',
+    energized_safety_lighting: false, energized_safety_barricades: false, energized_safety_insulated: false,
+    energized_pm_name: '', energized_engineer_name: '', energized_safety_officer_name: '',
+    energized_facility_manager_name: '', energized_agree: '', energized_gc_agree: '', energized_elec_agree: '',
+    // Hot Work Permit
+    hot_required: false,
+    hot_project_name: '', hot_location_project: '', hot_start_date: '',
+    hot_manager: '', hot_duration: '', hot_contractors: '', hot_gc_contact: '', hot_description: '',
+    hot_permit_duration_daily: false, hot_permit_duration_project: false,
+    hot_permit_duration_weekly: false, hot_permit_duration_annual: false,
+    hot_type_welding: false, hot_type_tack: false, hot_type_cutting: false,
+    hot_type_sweating: false, hot_type_brazing: false, hot_type_hottap: false,
+    hot_type_soldering: false, hot_type_other: '', 
+    hot_unit_acetylene: false, hot_unit_butane: false, hot_unit_electric: false, hot_unit_other: '',
+    hot_check_extinguisher: '', hot_check_suppression: '', hot_check_combustibles: '',
+    hot_check_ventilation: '', hot_check_protection: '', hot_check_spotter: '',
+    hot_check_notifications: '', hot_check_equipment: '',
+    hot_special_precautions: '',
+    hot_pm_name: '', hot_safety_name: '', hot_lifesafety_name: '',
+    hot_gc_name: '', hot_operator_name: '', hot_spotter_name: '',
+    // Confined Space Permit
+    confined_required: false,
+    confined_project_name: '', confined_location_project: '', confined_start_date: '',
+    confined_manager: '', confined_duration: '', confined_contractors: '',
+    confined_gc_contact: '', confined_description: '',
+    confined_duration_daily: false, confined_duration_project: false,
+    confined_duration_weekly: false, confined_duration_annual: false,
+    confined_hazard_injury: false, confined_hazard_residue: false, confined_hazard_dust: false,
+    confined_hazard_flash: false, confined_hazard_engulfment: false,
+    confined_hazard_inflow_solid: false, confined_hazard_outflow: false,
+    confined_hazard_lighting: false, confined_hazard_steam: false, confined_hazard_footing: false,
+    confined_hazard_atmosphere: false, confined_hazard_fall: false,
+    confined_hazard_electrocution: false, confined_hazard_machinery: false, confined_hazard_other: '',
+    confined_test_o2: '', confined_test_lel: '', confined_test_h2s: '', confined_test_co: '',
+    confined_precaution_barricade: false, confined_precaution_ventilation: false, confined_precaution_other: '',
+    confined_during_surveillance: '', confined_during_ventilation: '', confined_during_monitor: '',
+    confined_during_respirator: '', confined_during_ppe: '', confined_during_harness: '',
+    confined_during_hoist: '', confined_during_gfi: '', confined_during_other: '',
+    confined_special_precautions: '',
+    confined_emergency_agency: '', confined_emergency_access: '',
+    confined_emergency_small_opening: '', confined_emergency_foreseeable: '', confined_emergency_worst_case: '',
+    confined_pm_name: '', confined_safety_name: '', confined_gc_name: '', confined_personnel_name: '',
+    // Form 1 sign-off
+    form1_pm_name: '',
+    // ICRA
+    construction_type: '', patient_risk_group: '', icra_class: '', icra_notes: '',
+    icra_q1: '', icra_q2: '', icra_q3: '', icra_q4: '', icra_comments: '',
+    icra_ipc_name: '',
+    // Life Safety
     above_ceiling_required: false,
-    above_ceiling_location: '',
-    above_ceiling_fire_barriers: '',
-    above_ceiling_notes: '',
-    daily_checklist: {},
-    completed_by: '',
+    ac_project_number: '', ac_manager: '', ac_inspection_type: '',
+    ac_permit_start: '', ac_permit_end: '', ac_authorized_workers: '', ac_work_type: '',
+    ac_check1: '', ac_check2: '', ac_check3: '', ac_check4: '', ac_check5: '', ac_check6: '',
+    ac_special_conditions: '', ac_pm_name: '', ac_lifesafety_name: '', ac_facilities_name: '', ac_gc_name: '',
+    access_doors_required: false, access_doors_comments: '',
+    fire_system_required: false, fire_system_comments: '',
+    barriers_required: false, barriers_comments: '',
+    ilsm_location: '', ilsm_description: '',
+    ilsm_q1: '', ilsm_q2: '', ilsm_q3: '', ilsm_q4: '', ilsm_q5: '', ilsm_q6: '', ilsm_q7: '',
+    ilsm_special_conditions: '',
+    ilsm_determination: '', ilsm_fire_watch: '',
+    ls_pm_name: '', ls_lifesafety_name: '',
+    // Acknowledgement
+    ack_q1: '', ack_q2: '', ack_q3: '', ack_q4: '',
+    sig_pm: '', sig_safety: '', sig_lifesafety: '', sig_ipc: '', sig_enduser: '',
+    sig_staff1: '', sig_staff2: '', sig_staff3: '', sig_staff4: '', sig_staff5: '', sig_staff6: '',
+    sig_sub1: '', sig_sub2: '', sig_sub3: '', sig_sub4: '', sig_sub5: '',
     status: 'draft',
   })
 
   useEffect(() => {
     async function load() {
-      const { data: sub } = await supabase
-        .from('submissions').select('*').eq('doc_id', docId).single()
+      const { data: sub } = await supabase.from('submissions').select('*').eq('doc_id', docId).single()
       if (sub) setSubmission(sub)
-      const { data: existing } = await supabase
-        .from('assessments').select('*').eq('doc_id', docId).single()
-      if (existing) {
-        setAssessmentId(existing.id)
-        setForm(f => ({ ...f, ...existing }))
-      }
+      const { data: existing } = await supabase.from('assessments').select('*').eq('doc_id', docId).single()
+      if (existing) { setAssessmentId(existing.id); setForm(f => ({ ...f, ...existing })) }
       setLoading(false)
     }
     load()
@@ -87,12 +169,13 @@ export default function AssessPage() {
     }
   }, [form.construction_type, form.patient_risk_group])
 
-  function set(key, val) { setForm(f => ({ ...f, [key]: val })) }
+  const isLocked = form.status === 'complete'
+  function set(key, val) { if (isLocked) return; setForm(f => ({ ...f, [key]: val })) }
 
   async function handleSave(status = 'draft') {
     setSaving(true)
     const payload = { ...form, doc_id: docId, submission_id: submission?.id, status, updated_at: new Date().toISOString() }
-    if (status === 'complete') { payload.completed_at = new Date().toISOString() }
+    if (status === 'complete') payload.completed_at = new Date().toISOString()
     let error
     if (assessmentId) {
       const res = await supabase.from('assessments').update(payload).eq('id', assessmentId)
@@ -107,117 +190,753 @@ export default function AssessPage() {
     else alert('Error saving: ' + error.message)
   }
 
-  const s = { fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f3f4f6' }
-  const hdr = { background: '#ba0c2f', color: '#fff', padding: '14px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
-  const card = { background: '#fff', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', padding: '28px', marginBottom: '16px' }
-  const lbl = { display: 'block', fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }
-  const inp = { width: '100%', padding: '9px 12px', border: '1.5px solid #d1d5db', borderRadius: '6px', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'inherit' }
+  // Styles
+  const lbl = { display: 'block', fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '5px' }
+  const inp = { width: '100%', padding: '8px 11px', border: '1.5px solid #d1d5db', borderRadius: '6px', fontSize: '13px', boxSizing: 'border-box', fontFamily: 'inherit' }
   const sel = { ...inp }
-  const ta = { ...inp, height: '80px', resize: 'vertical' }
-  const row = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }
-  const secHdr = { fontSize: '16px', fontWeight: '800', color: '#111', margin: '0 0 20px', paddingBottom: '10px', borderBottom: '2px solid #f3f4f6' }
+  const ta = { ...inp, height: '72px', resize: 'vertical' }
+  const row2 = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }
+  const row3 = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }
+  const card = { background: '#fff', borderRadius: '8px', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', padding: '24px', marginBottom: '14px' }
+  const secTitle = { fontSize: '15px', fontWeight: '800', color: '#111', margin: '0 0 16px', paddingBottom: '8px', borderBottom: '2px solid #f3f4f6' }
+  const subTitle = { fontSize: '13px', fontWeight: '700', color: '#374151', margin: '16px 0 10px' }
+  const permitBox = { background: '#fefce8', border: '1.5px solid #fbbf24', borderRadius: '8px', padding: '20px', marginTop: '16px' }
+  const permitTitle = { fontSize: '14px', fontWeight: '800', color: '#92400e', margin: '0 0 14px', paddingBottom: '8px', borderBottom: '1px solid #fcd34d' }
+  const infoBox = { background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '6px', padding: '12px 14px', fontSize: '12px', color: '#0c4a6e', marginBottom: '14px', lineHeight: '1.6' }
+  const ynRow = { display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'center' }
 
-  const tabs = [
-    { id: 'icra', label: '1. ICRA Class' },
-    { id: 'hot', label: '2. Hot Work' },
-    { id: 'confined', label: '3. Confined Space' },
-    { id: 'energized', label: '4. Energized Elec.' },
-    { id: 'ceiling', label: '5. Above Ceiling' },
-    { id: 'checklist', label: '6. Daily Checklist' },
-  ]
+  function YNField({ label, fieldKey, notes, notesKey, notesLabel, children }) {
+    return (
+      <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', marginBottom: '10px', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px 14px', background: '#f9fafb' }}>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#111', flex: 1 }}>{label}</span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', cursor: 'pointer', fontWeight: '700', color: form[fieldKey] ? '#16a34a' : '#6b7280' }}>
+            <input type='radio' name={fieldKey} checked={form[fieldKey] === true} onChange={() => set(fieldKey, true)} /> YES
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', cursor: 'pointer', fontWeight: '700', color: form[fieldKey] === false ? '#dc2626' : '#6b7280' }}>
+            <input type='radio' name={fieldKey} checked={form[fieldKey] === false} onChange={() => set(fieldKey, false)} /> NO
+          </label>
+        </div>
+        {form[fieldKey] === true && (
+          <div style={{ padding: '14px', borderTop: '1px solid #e5e7eb' }}>
+            {notesKey && <div style={{ marginBottom: children ? '12px' : '0' }}><label style={lbl}>{notesLabel || 'Notes'}</label><textarea style={ta} value={form[notesKey] || ''} onChange={e => set(notesKey, e.target.value)} /></div>}
+            {children}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  function CheckRow({ label, fieldKey }) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
+        <label style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', cursor: 'pointer', fontWeight: '600', color: form[fieldKey] ? '#16a34a' : '#374151' }}>
+          <input type='checkbox' checked={!!form[fieldKey]} onChange={e => set(fieldKey, e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#16a34a' }} />
+          {label}
+        </label>
+      </div>
+    )
+  }
+
+  function SigTable({ rows }) {
+    return (
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginTop: '12px' }}>
+        <thead>
+          <tr style={{ background: '#007a86' }}>
+            <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'left', width: '30%' }}>Entity</th>
+            <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'left' }}>Name (Typed Legal Name = Signature)</th>
+            <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'left', width: '20%' }}>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+              <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontWeight: '700', fontSize: '12px' }}>{r.label}</td>
+              <td style={{ padding: '4px 6px', border: '1px solid #e5e7eb' }}><input style={{ ...inp, border: 'none', borderBottom: '1px solid #d1d5db', borderRadius: '0', background: 'transparent' }} type='text' value={form[r.nameKey] || ''} onChange={e => set(r.nameKey, e.target.value)} /></td>
+              <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontSize: '11px', color: '#6b7280' }}>{new Date().toLocaleDateString()}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  }
+
+  const steps = [
+  { n: 1, label: 'Project Info' },
+  { n: 2, label: 'Barriers' },
+  { n: 3, label: 'Risk Items' },
+  { n: 4, label: 'Air Quality' },
+  { n: 5, label: 'Utilities' },
+  { n: 6, label: 'Safety' },
+  { n: 7, label: 'ICRA' },
+  { n: 8, label: 'Life Safety' },
+  { n: 9, label: 'Acknowledgement' },
+]
 
   if (loading) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'system-ui' }}>Loading assessment...</div>
-  if (!submission) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'system-ui', color: '#dc2626' }}>Submission not found for Doc ID: {docId}</div>
-
-  const icraColors = { 'I': '#16a34a', 'II': '#ca8a04', 'III': '#ea580c', 'IV': '#dc2626' }
+  if (!disclaimerAccepted) return <Disclaimer docId={docId} projectName={submission?.project_name} onAccept={() => setDisclaimerAccepted(true)} />
+  if (!submission) return <div style={{ padding: '60px', textAlign: 'center', fontFamily: 'system-ui', color: '#dc2626' }}>Submission not found: {docId}</div>
 
   return (
-    <div style={s}>
-      <div style={hdr}>
-        <div>
-          <div style={{ fontWeight: '900', fontSize: '15px', letterSpacing: '0.05em' }}>UNMH PCRA ASSESSMENT</div>
-          <div style={{ fontSize: '12px', opacity: 0.85 }}>{submission.project_name} · {docId}</div>
+    <div style={{ fontFamily: 'system-ui, sans-serif', minHeight: '100vh', background: '#f3f4f6' }}>
+
+      {/* Lock Banner */}
+      {isLocked && (
+        <div style={{ background: '#1f2937', color: '#fff', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '3px solid #ba0c2f' }}>
+          <span style={{ fontSize: '20px' }}>🔒</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: '900', fontSize: '13px' }}>DOCUMENT LOCKED — Submitted {form.completed_at ? new Date(form.completed_at).toLocaleDateString() : ''}</div>
+            <div style={{ fontSize: '11px', opacity: 0.8 }}>This assessment is locked and cannot be edited. To make changes, create an Addendum.</div>
+          </div>
+          <button style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '6px 16px', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}>+ Create Addendum</button>
         </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {saved && <span style={{ background: '#16a34a', color: '#fff', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>✓ Saved</span>}
-          <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '6px', padding: '7px 16px', fontSize: '13px', fontWeight: '700', cursor: 'pointer' }}>
-            {saving ? 'Saving...' : 'Save Draft'}
-          </button>
+      )}
+      {/* Header */}
+      <div style={{ background: '#ba0c2f', color: '#fff', padding: '12px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <div style={{ fontWeight: '900', fontSize: '14px', letterSpacing: '0.05em' }}>UNMH — Environmental Safety · Pre-Construction Risk Assessment</div>
+          <div style={{ fontSize: '11px', opacity: 0.85 }}>{submission.project_name} · {docId} · v11.25</div>
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {saved && <span style={{ background: '#16a34a', color: '#fff', padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700' }}>✓ Saved</span>}
+          {!isLocked && <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: 'rgba(255,255,255,0.2)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.5)', borderRadius: '6px', padding: '6px 14px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+            {saving ? 'Saving...' : '💾 Save Draft'}
+          </button>}
         </div>
       </div>
 
-      <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px 16px' }}>
-        <div style={{ background: '#fff', borderRadius: '8px', padding: '14px 20px', marginBottom: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.07)', display: 'flex', gap: '32px', flexWrap: 'wrap', fontSize: '13px' }}>
-          <div><span style={{ color: '#6b7280', fontWeight: '700' }}>Building: </span>{submission.building}</div>
-          <div><span style={{ color: '#6b7280', fontWeight: '700' }}>Floor: </span>{submission.floor}</div>
-          <div><span style={{ color: '#6b7280', fontWeight: '700' }}>PM: </span>{submission.project_manager}</div>
-          <div><span style={{ color: '#6b7280', fontWeight: '700' }}>Meeting: </span>{submission.meeting_date}</div>
-          {form.icra_class && <div><span style={{ color: '#6b7280', fontWeight: '700' }}>ICRA Class: </span><span style={{ background: icraColors[form.icra_class], color: '#fff', padding: '2px 10px', borderRadius: '12px', fontWeight: '800' }}>{form.icra_class}</span></div>}
+      {/* Step progress bar */}
+<div style={{ background: '#1a2332', padding: '12px 16px', overflowX: 'auto' }}>
+  <div style={{ display: 'flex', alignItems: 'center', minWidth: '700px' }}>
+    {steps.map((s, i) => (
+      <div key={s.n} style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+        <div onClick={() => setStep(s.n)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', minWidth: '70px' }}>
+          <div style={{
+            width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontWeight: '900', fontSize: '12px',
+            background: step === s.n ? '#ba0c2f' : step > s.n ? '#007a86' : 'rgba(255,255,255,0.15)',
+            color: '#fff', marginBottom: '4px'
+          }}>{step > s.n ? '✓' : s.n}</div>
+          <div style={{ fontSize: '9px', color: step === s.n ? '#fff' : step > s.n ? '#007a86' : 'rgba(255,255,255,0.5)', fontWeight: step === s.n ? '700' : '400', textAlign: 'center', whiteSpace: 'nowrap' }}>
+            {s.label}
+          </div>
         </div>
+        {i < steps.length - 1 && (
+          <div style={{ flex: 1, height: '2px', background: step > s.n ? '#007a86' : 'rgba(255,255,255,0.15)', margin: '0 4px', marginBottom: '16px' }} />
+        )}
+      </div>
+    ))}
+  </div>
+</div>
+      {/* Project info bar */}
+      <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '10px 20px', display: 'flex', gap: '24px', flexWrap: 'wrap', fontSize: '12px' }}>
+        <span><strong>Doc ID:</strong> <span style={{ color: '#ba0c2f', fontWeight: '800' }}>{docId}</span></span>
+        <span><strong>Project:</strong> {submission.project_name}</span>
+        <span><strong>Building:</strong> {submission.building} · {submission.floor}</span>
+        <span><strong>PM:</strong> {submission.project_manager}</span>
+        <span><strong>Meeting:</strong> {submission.meeting_date}</span>
+        {form.icra_class && <span><strong>ICRA:</strong> <span style={{ background: icraColors[form.icra_class], color: '#fff', padding: '1px 8px', borderRadius: '10px', fontWeight: '800' }}>{form.icra_class}</span></span>}
+      </div>
 
-        <div style={{ display: 'flex', gap: '4px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          {tabs.map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id)} style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', fontSize: '13px', fontWeight: '700', cursor: 'pointer', background: activeTab === t.id ? '#ba0c2f' : '#fff', color: activeTab === t.id ? '#fff' : '#374151', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
+      <div style={{ maxWidth: '980px', margin: '0 auto', padding: '20px 16px 60px' }}>
 
-        {activeTab === 'icra' && (
-          <div style={card}>
-            <div style={secHdr}>ICRA Class Determination</div>
-            <div style={row}>
-              <div>
-                <label style={lbl}>Type of Construction Activity</label>
-                <select style={sel} value={form.construction_type} onChange={e => set('construction_type', e.target.value)}>
-                  <option value=''>-- Select --</option>
-                  <option value='A'>Type A — Inspection / non-invasive</option>
-                  <option value='B'>Type B — Small scale, short duration</option>
-                  <option value='C'>Type C — Work generates dust</option>
-                  <option value='D'>Type D — Major demolition / construction</option>
-                </select>
+        {/* ═══ FORM 1 ═══ */}
+        {step === 1 && (
+
+          <>
+            {/* Project Information */}
+            <div style={card}>
+              <div style={secTitle}>Project Information</div>
+              <div style={infoBox}>
+                When demolition, renovation, modification, construction, maintenance or repair activities are planned, the impact of the work on UNM Hospital operations will be assessed. A Pre-Construction Risk Assessment will be conducted prior to the initiation of the activity.<br />
+                <strong>Digital Version:</strong> Each party agrees that a "typed legal name" represents an equivalent of an electronic signature.
               </div>
-              <div>
-                <label style={lbl}>Patient Risk Group</label>
-                <select style={sel} value={form.patient_risk_group} onChange={e => set('patient_risk_group', e.target.value)}>
-                  <option value=''>-- Select --</option>
-                  <option value='Low'>Low Risk</option>
-                  <option value='Medium'>Medium Risk</option>
-                  <option value='High'>High Risk</option>
-                  <option value='Highest'>Highest Risk</option>
-                </select>
+              <div style={row2}>
+                <div><label style={lbl}>Booking ID</label><input style={inp} type='text' value={submission.doc_id} readOnly style={{ ...inp, background: '#f9fafb' }} /></div>
+                <div><label style={lbl}>Project Name</label><input style={inp} type='text' value={submission.project_name} readOnly style={{ ...inp, background: '#f9fafb' }} /></div>
               </div>
-            </div>
-            {form.icra_class && (
-              <div style={{ background: '#f0fdf4', border: `2px solid ${icraColors[form.icra_class]}`, borderRadius: '8px', padding: '20px', marginBottom: '20px', textAlign: 'center' }}>
-                <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Determined ICRA Class</div>
-                <div style={{ fontSize: '48px', fontWeight: '900', color: icraColors[form.icra_class] }}>{form.icra_class}</div>
-                <div style={{ fontSize: '13px', color: '#374151', marginTop: '4px' }}>
-                  {form.icra_class === 'I' && 'Lowest risk — General precautions'}
-                  {form.icra_class === 'II' && 'Low-medium risk — Dust control required'}
-                  {form.icra_class === 'III' && 'Medium-high risk — Containment required'}
-                  {form.icra_class === 'IV' && 'Highest risk — Full containment + negative pressure'}
+              <div style={row3}>
+                <div><label style={lbl}>Project Start Date</label><input style={inp} type='text' value={submission.meeting_date || ''} readOnly style={{ ...inp, background: '#f9fafb' }} /></div>
+                <div><label style={lbl}>Project Manager</label><input style={inp} type='text' value={submission.project_manager || ''} readOnly style={{ ...inp, background: '#f9fafb' }} /></div>
+                <div><label style={lbl}>Estimated Duration</label><input style={inp} type='text' value={(submission.duration_weeks ? submission.duration_weeks + ' wks ' : '') + (submission.duration_days ? submission.duration_days + ' days' : '')} readOnly style={{ ...inp, background: '#f9fafb' }} /></div>
+              </div>
+              <div style={row2}>
+                <div><label style={lbl}>Requestor Name</label><input style={inp} type='text' value={submission.requester_name || ''} readOnly style={{ ...inp, background: '#f9fafb' }} /></div>
+                <div><label style={lbl}>Requestor Email</label><input style={inp} type='text' value={submission.requester_email || ''} readOnly style={{ ...inp, background: '#f9fafb' }} /></div>
+              </div>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={lbl}>Contractor(s) / Staff Performing Work</label>
+                <input style={inp} type='text' value={form.contractors} onChange={e => set('contractors', e.target.value)} />
+              </div>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={lbl}>General Contractor Point of Contact</label>
+                <input style={inp} type='text' value={form.gc_contact} onChange={e => set('gc_contact', e.target.value)} />
+              </div>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={lbl}>Description of Project/Work (Reference NFPA 101-2012, Chapter 43)</label>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  {[['project_type_repair','Repair'],['project_type_renovation','Renovation'],['project_type_modification','Modification'],['project_type_reconstruction','Reconstruction/Change of Use'],['project_type_addition','Addition']].map(([k,l]) => (
+                    <label key={k} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', cursor: 'pointer' }}>
+                      <input type='checkbox' checked={!!form[k]} onChange={e => set(k, e.target.checked)} /> {l}
+                    </label>
+                  ))}
                 </div>
               </div>
-            )}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={lbl}>ICRA Matrix Reference</label>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+              <div><label style={lbl}>Scope of Work</label><textarea style={ta} value={form.scope_of_work} onChange={e => set('scope_of_work', e.target.value)} /></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+              <div>
+                <label style={lbl}>PCRA Expiration Date *</label>
+                <input style={{ ...inp, borderColor: '#ba0c2f' }} type='date' value={form.pcra_expiration_date} onChange={e => set('pcra_expiration_date', e.target.value)} />
+                <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '4px' }}>PM notified 7 days before, 24hrs before, day-of, and 24hrs after expiration</div>
+              </div>
+              <div>
+                <label style={lbl}>Renewal Required?</label>
+                <select style={sel} value={form.pcra_renewal_required} onChange={e => set('pcra_renewal_required', e.target.value)}>
+                  <option value=''>-- Assess at expiration --</option>
+                  <option value='yes'>Yes — renewal planned</option>
+                  <option value='no'>No — project complete at expiration</option>
+                  <option value='tbd'>TBD — assess closer to date</option>
+                </select>
+              </div>
+              <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', padding: '10px 12px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#92400e', marginBottom: '4px' }}>Expiration Notifications</div>
+                <div style={{ fontSize: '10px', color: '#78350f', lineHeight: '1.6' }}>
+                  7 days before · 24 hrs before · Day of expiration · 24 hrs after (urgent) · 48 hrs after (escalation)
+                </div>
+              </div>
+            </div>
+
+            {/* General Requirements */}
+            <div style={card}>
+              <div style={secTitle}>General Requirements</div>
+              <div style={infoBox}>
+                All contractors shall comply with the items listed below and maintain the Pre-Construction Risk Assessment document in an accessible location for the duration of the project. The prime contractor shall be responsible for completion of the Construction Site Inspection Checklist and Interim Life Safety Measures checklist. All contractors must properly display a UNMH Badge with "EC designation" and flu shot sticker (during flu season).
+              </div>
+            </div></>
+        )}
+        {step === 2 && (
+          <>
+
+            {/* Barriers */}
+            <div style={card}>
+              <div style={secTitle}>General Containment · Construction Barrier(s)</div>
+              <div style={infoBox}>
+                NFPA 241 – Walls shall have at least a 1-hour fire resistance rating. At UNMH, short duration projects/work to be completed within 30 Calendar Days are permitted to be protected with fire-resistant plastic sheeting, provided the building is equipped with an approved automatic sprinkler system and no hot work is being performed.
+              </div>
+              <div style={row2}>
+                <div><label style={lbl}>Scheduled Duration of Project</label><input style={inp} type='text' placeholder='e.g. 3 weeks' value={form.barrier_duration} onChange={e => set('barrier_duration', e.target.value)} /></div>
+                <div><label style={lbl}>Comments</label><input style={inp} type='text' value={form.barrier_comments} onChange={e => set('barrier_comments', e.target.value)} /></div>
+              </div>
+              <div style={subTitle}>Type of Construction Barrier(s)</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                {[['barrier_type_plastic','Fire resistant plastic or Edgeguard — Low-Risk, Short duration project (30 days or less)'],['barrier_type_gypsum_single','Gypsum board, 5/8" single panel — High Risk or Long duration project (>30 days, fully sprinklered building)'],['barrier_type_gypsum_double','Gypsum board, 5/8" double panel, 1-hour fire rating — High Risk or Long duration project (>30 days, non-sprinklered building)']].map(([k,l]) => (
+                  <label key={k} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                    <input type='checkbox' checked={!!form[k]} onChange={e => set(k, e.target.checked)} style={{ marginTop: '2px', width: '15px', height: '15px' }} /> {l}
+                  </label>
+                ))}
+              </div>
+              <div><label style={lbl}>Barrier Comments</label><textarea style={ta} value={form.barrier_type_comments} onChange={e => set('barrier_type_comments', e.target.value)} /></div>
+            </div></>
+        )}
+        {step === 3 && (
+          <>
+
+            {/* Risk Identification */}
+            <div style={card}>
+              <div style={secTitle}>Risk Identification — YES Answer Indicates a Risk · All Identified Risks Require Action</div>
+
+              {/* BH */}
+              <div style={subTitle}>BH — Behavioral Health</div>
+              <YNField label='Will the project be performed in a designated Behavioral Health (BH) facility? If yes, a BH Environmental Risk Assessment is required.' fieldKey='bh_required' notesKey='bh_notes' notesLabel='Comments / BH Risk Assessment Notes'>
+                <div style={infoBox}>Potential hazards include: ligature points/hazards, construction barrier hardware, management of construction materials, tools, and security of the construction site. Documentation of the BH risk assessment will be maintained in the project file.</div>
+              </YNField>
+
+              {/* CRANE */}
+              <div style={subTitle}>CRANE</div>
+              <YNField label='Will a crane(s) be used during the project? (OSHA 29 CFR 1926.1400, Subpart CC) — Required prior to crane use: site visit by UNMH Safety Dept.' fieldKey='crane_required' notesKey='crane_notes' notesLabel='Comments / Crane Plan Notes'>
+                <div style={permitBox}>
+                  <div style={permitTitle}>📋 CRANE PERMIT — PLACEHOLDER (Full permit coming in next update)</div>
+                  <div style={infoBox}>Current licensure/certifications for all crane operators required. Certified riggers and signal personnel required. Area below any part of the lift radius must remain vacant during lift. Crane cannot block emergency egress doors during normal business hours. ILSM plan required if emergency egress doors are affected.</div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Project Name</label><input style={inp} type='text' value={form.crane_permit_project_name} onChange={e => set('crane_permit_project_name', e.target.value)} /></div>
+                    <div><label style={lbl}>Location of Project</label><input style={inp} type='text' value={form.crane_permit_location} onChange={e => set('crane_permit_location', e.target.value)} /></div>
+                  </div>
+                  <div style={row3}>
+                    <div><label style={lbl}>Start Date</label><input style={inp} type='date' value={form.crane_permit_start_date} onChange={e => set('crane_permit_start_date', e.target.value)} /></div>
+                    <div><label style={lbl}>Project Manager</label><input style={inp} type='text' value={form.crane_permit_manager} onChange={e => set('crane_permit_manager', e.target.value)} /></div>
+                    <div><label style={lbl}>Estimated Duration</label><input style={inp} type='text' value={form.crane_permit_duration} onChange={e => set('crane_permit_duration', e.target.value)} /></div>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Contractor(s) Performing Work</label><input style={inp} type='text' value={form.crane_permit_contractors} onChange={e => set('crane_permit_contractors', e.target.value)} /></div>
+                  <div><label style={lbl}>Description of Work / Crane Lift Plan Notes</label><textarea style={ta} value={form.crane_permit_description} onChange={e => set('crane_permit_description', e.target.value)} placeholder='Describe crane use, lift patterns, power line distances, utility paths, emergency egress impacts...' /></div>
+                </div>
+              </YNField>
+
+              {/* ASBESTOS */}
+              <div style={subTitle}>ASBESTOS</div>
+              <YNField label='Has an asbestos assessment been performed on the area? (OSHA 1910.1001)' fieldKey='asbestos_required' notesKey='asbestos_notes' notesLabel='Comments / Assessment Reference'>
+                <div style={infoBox}>Attach Asbestos Assessment documentation to project file.</div>
+              </YNField>
+
+              {/* NOISE */}
+              <div style={subTitle}>NOISE</div>
+              <YNField label='Will noise be generated that will affect a department adjacent to, above or below the construction/work area?' fieldKey='noise_required'>
+                <div style={infoBox}>Sound level limits: 75 dB immediately adjacent to construction barrier in patient care areas · 85 dB in non-patient care areas.</div>
+                <div style={{ marginBottom: '12px' }}><label style={lbl}>Departments to be Notified</label><input style={inp} type='text' value={form.noise_departments} onChange={e => set('noise_departments', e.target.value)} /></div>
+                <div><label style={lbl}>How will noise be reduced to an acceptable level?</label><textarea style={ta} value={form.noise_reduction} onChange={e => set('noise_reduction', e.target.value)} /></div>
+              </YNField>
+
+              {/* VIBRATION */}
+              <div style={subTitle}>VIBRATION</div>
+              <YNField label='Will vibration be generated that will affect a department adjacent to, above or below the construction/work area?' fieldKey='vibration_required'>
+                <div style={{ marginBottom: '12px' }}><label style={lbl}>Departments to be Notified</label><input style={inp} type='text' value={form.vibration_departments} onChange={e => set('vibration_departments', e.target.value)} /></div>
+                <div><label style={lbl}>How will vibration be reduced to an acceptable level?</label><textarea style={ta} value={form.vibration_reduction} onChange={e => set('vibration_reduction', e.target.value)} /></div>
+              </YNField>
+
+              {/* ODORS */}
+              <div style={subTitle}>ODORS</div>
+              <YNField label='Will odors be generated that will affect a department adjacent to, above or below the construction/work area?' fieldKey='odors_required'>
+                <div style={{ marginBottom: '12px' }}><label style={lbl}>Departments to be Notified</label><input style={inp} type='text' value={form.odors_departments} onChange={e => set('odors_departments', e.target.value)} /></div>
+                <div><label style={lbl}>How will odors be minimized?</label><textarea style={ta} value={form.odors_reduction} onChange={e => set('odors_reduction', e.target.value)} /></div>
+              </YNField>
+            </div>
+</>
+        )}
+        {step === 4 && (
+          <>
+            {/* Air Quality */}
+            <div style={card}>
+              <div style={secTitle}>Air Quality Monitoring (Required on All Projects)</div>
+              <div style={infoBox}>How will air quality and air pressure relationships in the construction/work area be monitored and maintained? A digital monitor shall be utilized on all projects.</div>
+              <div><label style={lbl}>Air Quality Monitoring Plan / Comments</label><textarea style={{ ...ta, height: '80px' }} value={form.air_quality_plan} onChange={e => set('air_quality_plan', e.target.value)} /></div>
+            </div>
+</>
+        )}
+        {step === 5 && (
+          <>
+            {/* Utility Systems */}
+            <div style={card}>
+              <div style={secTitle}>Utility Systems</div>
+              <div style={subTitle}>Will any of the following utility systems be out of service at any time during the project?</div>
+              <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden', marginBottom: '14px' }}>
+                {[['util_fire_alarm','Fire Alarm','If out for more than 4 hours in 24-hour period, ILSM must be implemented'],['util_fire_suppression','Fire Suppression','If out for more than 10 hours in 24-hour period, ILSM must be implemented'],['util_electrical','Electrical',''],['util_water','Domestic Water',''],['util_medical_gas','Medical Gas',''],['util_sewage','Sewage',''],['util_hvac','HVAC','']].map(([k,l,note], i) => (
+                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', background: i % 2 === 0 ? '#fff' : '#f9fafb', borderBottom: '1px solid #f3f4f6' }}>
+                    <input type='checkbox' checked={!!form[k]} onChange={e => set(k, e.target.checked)} style={{ width: '16px', height: '16px', accentColor: '#ba0c2f' }} />
+                    <span style={{ fontSize: '13px', fontWeight: '600', flex: 1 }}>{l}</span>
+                    {note && <span style={{ fontSize: '11px', color: '#dc2626', fontWeight: '600' }}>{note}</span>}
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginBottom: '14px' }}><label style={lbl}>Comments</label><textarea style={ta} value={form.util_comments} onChange={e => set('util_comments', e.target.value)} /></div>
+              <div><label style={lbl}>UNMH Project Manager Inspection Frequency</label>
+                <div style={{ display: 'flex', gap: '24px', marginTop: '6px' }}>
+                  {[['daily','Daily: Project with interior or exterior construction that has direct adjacency to patient care'],['weekly','Weekly: Project in low risk area that does not meet daily requirements']].map(([v,l]) => (
+                    <label key={v} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '13px', cursor: 'pointer', flex: 1 }}>
+                      <input type='radio' name='pm_inspection_frequency' checked={form.pm_inspection_frequency === v} onChange={() => set('pm_inspection_frequency', v)} style={{ marginTop: '2px' }} /> {l}
+                    </label>
+                 ))}
+          </div>
+        </div>
+          </>
+        )}
+        {step === 5 && (
+          <></>
+          <>
+                </div>
+              </div>
+            </div>
+
+            {/* Safety */}
+            <div style={card}>
+              <div style={secTitle}>Safety</div>
+
+              <div style={subTitle}>HAZMAT</div>
+              <YNField label='Will hazardous chemicals/materials be brought on site and used?' fieldKey='hazmat_required' notesKey='hazmat_notes' notesLabel='Comments / Hazmat Plan Notes'>
+                <div style={infoBox}>Required if yes: Hazardous materials inventory and SDS for each product · Appropriate labeling and storage · Spill response plan · Fume/odor handling plan · Compressed gas handling per hospital policy</div>
+              </YNField>
+
+              <div style={subTitle}>SCAFFOLD / LADDERS</div>
+              <YNField label='Will scaffolding and/or ladders be used? (OSHA CFR 1910.23 and 1910.451)' fieldKey='scaffold_required' notesKey='scaffold_notes' notesLabel='Comments'>
+                <div style={infoBox}>Ladder requirements: Free of corrosion, used only for intended purposes, inspected before each shift, defective ladders immediately removed. Scaffolding: Fall protection for work &gt;10 ft, guardrail height 38–45 inches, mid-rails required. Attach Ladder/Scaffolding Safety Plan.</div>
+              </YNField>
+
+              <div style={subTitle}>FALL PROTECTION</div>
+              <YNField label='Will activities be performed requiring workers to work at an elevated level of 6 feet or more (construction) / 4 feet or more (general industry)? (OSHA CFR 1910.28, 1926.502)' fieldKey='fall_required' notesKey='fall_notes' notesLabel='Comments / Fall Protection Plan Reference'>
+                <div style={infoBox}>Attach Contractor Fall Protection Plan to project file.</div>
+              </YNField>
+
+              <div style={subTitle}>POWERED PLATFORMS / MAN LIFTS</div>
+              <YNField label='Will powered platforms, man lifts and/or vehicle-mounted work platforms be used? (OSHA CFR 1910.66, 1910.67, 1910.68)' fieldKey='lift_required' notesKey='lift_notes' notesLabel='Comments'>
+                <div style={infoBox}>Attach Contractor Safety Plan to project file.</div>
+              </YNField>
+
+              {/* LOTO */}
+              <div style={subTitle}>LOTO — Lockout / Tagout</div>
+              <YNField label='Will any machine, equipment or area being worked on/in have stored energy potential (electrical, pneumatic, hydraulic or kinetic)? UNMH Lockout/Tagout procedure required.' fieldKey='loto_required' notesKey='loto_notes' notesLabel='Comments'>
+                <div style={permitBox}>
+                  <div style={permitTitle}>🔒 LOCKOUT / TAGOUT PERMIT — PLACEHOLDER (Full permit coming in next update)</div>
+                  <div style={infoBox}>Adherence to the UNMH Lockout/Tagout procedure is required for all contractors. Written Lockout/Tagout plan must be provided to UNMH Project Manager, UNMH Facilities and Safety department for review and approval prior to work.</div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Project Name</label><input style={inp} type='text' value={form.loto_permit_project_name} onChange={e => set('loto_permit_project_name', e.target.value)} /></div>
+                    <div><label style={lbl}>Location of Project</label><input style={inp} type='text' value={form.loto_permit_location} onChange={e => set('loto_permit_location', e.target.value)} /></div>
+                  </div>
+                  <div style={row3}>
+                    <div><label style={lbl}>Start Date</label><input style={inp} type='date' value={form.loto_permit_start_date} onChange={e => set('loto_permit_start_date', e.target.value)} /></div>
+                    <div><label style={lbl}>Project Manager</label><input style={inp} type='text' value={form.loto_permit_manager} onChange={e => set('loto_permit_manager', e.target.value)} /></div>
+                    <div><label style={lbl}>Contractor(s)</label><input style={inp} type='text' value={form.loto_permit_contractors} onChange={e => set('loto_permit_contractors', e.target.value)} /></div>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Energy Sources to be Locked Out</label><textarea style={ta} value={form.loto_permit_energy_sources} onChange={e => set('loto_permit_energy_sources', e.target.value)} placeholder='List all electrical, pneumatic, hydraulic, kinetic energy sources...' /></div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Lockout/Tagout Procedures</label><textarea style={{ ...ta, height: '90px' }} value={form.loto_permit_procedures} onChange={e => set('loto_permit_procedures', e.target.value)} placeholder='Step by step LOTO procedures...' /></div>
+                  <div><label style={lbl}>Additional Notes</label><textarea style={ta} value={form.loto_permit_notes} onChange={e => set('loto_permit_notes', e.target.value)} /></div>
+                </div>
+              </YNField>
+
+              {/* ENERGIZED ELECTRICAL */}
+              <div style={subTitle}>ELEC — Energized Electrical Work</div>
+              <YNField label='Will energized electrical work be required? NOTE: Any work above 50 volts requires an Energized Electrical Work Permit.' fieldKey='energized_required'>
+                <div style={permitBox}>
+                  <div style={permitTitle}>⚡ ENERGIZED ELECTRICAL WORK PERMIT — University of New Mexico Hospital · NFPA 70E</div>
+                  <div style={infoBox}>Energized Work is when working on or near exposed energized electrical conductors and/or circuit parts. References: US DOL OSHA 1910 · NFPA 70E Standard for Electrical Safety in the Workplace (2015 ed.)</div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Project Name</label><input style={inp} type='text' value={form.energized_project_name} onChange={e => set('energized_project_name', e.target.value)} /></div>
+                    <div><label style={lbl}>Location of Project</label><input style={inp} type='text' value={form.energized_location_project} onChange={e => set('energized_location_project', e.target.value)} /></div>
+                  </div>
+                  <div style={row3}>
+                    <div><label style={lbl}>Start Date/Time</label><input style={inp} type='datetime-local' value={form.energized_start_date} onChange={e => set('energized_start_date', e.target.value)} /></div>
+                    <div><label style={lbl}>Project Manager</label><input style={inp} type='text' value={form.energized_manager} onChange={e => set('energized_manager', e.target.value)} /></div>
+                    <div><label style={lbl}>Location of Work (Room #)</label><input style={inp} type='text' value={form.energized_room} onChange={e => set('energized_room', e.target.value)} /></div>
+                  </div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Estimated Duration</label><input style={inp} type='text' value={form.energized_duration} onChange={e => set('energized_duration', e.target.value)} /></div>
+                    <div><label style={lbl}>Contractor(s) Performing Work</label><input style={inp} type='text' value={form.energized_contractors} onChange={e => set('energized_contractors', e.target.value)} /></div>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Description of Panel(s) and/or Equipment Circuit(s)</label><input style={inp} type='text' value={form.energized_panel_description} onChange={e => set('energized_panel_description', e.target.value)} /></div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Equipment to be Serviced</label><input style={inp} type='text' value={form.energized_equipment} onChange={e => set('energized_equipment', e.target.value)} /></div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Other Equipment Potentially Affected</label><input style={inp} type='text' value={form.energized_other_equipment} onChange={e => set('energized_other_equipment', e.target.value)} /></div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Any Foreign (Secondary Source) Voltage Source</label><input style={inp} type='text' value={form.energized_foreign_voltage} onChange={e => set('energized_foreign_voltage', e.target.value)} /></div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Description of Work and Justification of Energized Work</label><textarea style={{ ...ta, height: '80px' }} value={form.energized_work_description} onChange={e => set('energized_work_description', e.target.value)} /></div>
+
+                  <div style={subTitle}>General Justification for Energized Work</div>
+                  {[['energized_j1_power_off','Is it possible to do this job with the power turned off or system de-energized?','energized_j1_power_off_notes'],['energized_j2_life_support','When de-energizing would interrupt essential life support, emergency alarms or ventilation systems.','energized_j2_notes'],['energized_j3_infeasible','Can it be demonstrated that de-energizing the system would introduce additional hazards or that it is infeasible due to equipment design or operations limitations?','energized_j3_notes']].map(([k,l,nk]) => (
+                    <div key={k} style={{ border: '1px solid #fcd34d', borderRadius: '6px', padding: '10px', marginBottom: '8px', background: '#fffbeb' }}>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: '600', flex: 1 }}>{l}</span>
+                        {['Yes','No'].map(v => <label key={v} style={{ display: 'flex', gap: '4px', alignItems: 'center', fontSize: '12px', cursor: 'pointer', fontWeight: '700' }}><input type='radio' name={k} checked={form[k] === v} onChange={() => set(k, v)} /> {v}</label>)}
+                      </div>
+                      {form[k] === 'Yes' && <div><label style={lbl}>Notes</label><input style={inp} type='text' value={form[nk] || ''} onChange={e => set(nk, e.target.value)} /></div>}
+                    </div>
+                  ))}
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Justification of Energized Work (why circuit/equipment cannot be de-energized)</label><textarea style={ta} value={form.energized_justification} onChange={e => set('energized_justification', e.target.value)} /></div>
+                  <div style={{ marginBottom: '14px' }}><label style={lbl}>Special Considerations for the Energized Work</label><textarea style={ta} value={form.energized_special_considerations} onChange={e => set('energized_special_considerations', e.target.value)} /></div>
+
+                  <div style={subTitle}>Job Hazard Analysis</div>
+                  <div style={{ marginBottom: '10px' }}><label style={lbl}>50–600 Volts of Exposed Circuitry — List all Lock Out/Tag Out Locations</label><textarea style={ta} value={form.energized_loto_50_600} onChange={e => set('energized_loto_50_600', e.target.value)} /></div>
+                  <div style={{ marginBottom: '14px' }}><label style={lbl}>601V–15kV of Exposed Circuitry — List all Lock Out/Tag Out Locations</label><textarea style={ta} value={form.energized_loto_601_15k} onChange={e => set('energized_loto_601_15k', e.target.value)} /></div>
+
+                  <div style={subTitle}>Required Documentation</div>
+                  {[['energized_doc_circuits','List or narrative of all circuits affected'],['energized_doc_schematic','Schematic drawing of all circuits affected and approved by UNMH'],['energized_doc_flash_hazard','Results of Flash Hazard Analysis'],['energized_doc_restriction','Description of means to restrict access of unqualified persons'],['energized_doc_location_map','Project location map/block diagram posted and reviewed by UNMH prior to start'],['energized_doc_step_by_step','Step by step energized work process'],['energized_doc_licenses','Copies of individual licenses'],['energized_doc_cpr','Copies of CPR certification']].map(([k,l]) => <CheckRow key={k} label={l} fieldKey={k} />)}
+
+                  <div style={{ ...subTitle, marginTop: '14px' }}>General Requirements</div>
+                  {[['energized_req_job_procedures','Detailed description of job procedures to be used'],['energized_req_safe_work','Description of safe work practices to be employed'],['energized_req_restriction','Means employed to restrict access of unqualified persons'],['energized_req_briefing','Evidence of completion of a job briefing including discussion of job-related hazards'],['energized_req_backup','Safety Backup is assigned — must be qualified per NFPA 70E, CPR certified, able to cut off power and call 911']].map(([k,l]) => <CheckRow key={k} label={l} fieldKey={k} />)}
+
+                  <div style={{ ...subTitle, marginTop: '14px' }}>Results of Shock Risk Assessment – NFPA 70E (2018)</div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Voltage to which personnel will be exposed</label><input style={inp} type='text' value={form.energized_shock_voltage} onChange={e => set('energized_shock_voltage', e.target.value)} /></div>
+                    <div><label style={lbl}>Limited approach boundary</label><input style={inp} type='text' value={form.energized_shock_limited} onChange={e => set('energized_shock_limited', e.target.value)} /></div>
+                  </div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Restricted approach boundary</label><input style={inp} type='text' value={form.energized_shock_restricted} onChange={e => set('energized_shock_restricted', e.target.value)} /></div>
+                    <div><label style={lbl}>Necessary shock protection/PPE</label><input style={inp} type='text' value={form.energized_shock_ppe} onChange={e => set('energized_shock_ppe', e.target.value)} /></div>
+                  </div>
+
+                  <div style={subTitle}>Arc Flash Risk Assessment – NFPA 70E</div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Arc flash hazard label per NFPA 70E (2015)?</label>
+                      <div style={{ display: 'flex', gap: '16px', marginTop: '6px' }}>
+                        {['Yes','No'].map(v => <label key={v} style={{ display: 'flex', gap: '5px', fontSize: '13px', cursor: 'pointer' }}><input type='radio' name='energized_arc_label' checked={form.energized_arc_label === v} onChange={() => set('energized_arc_label', v)} /> {v}</label>)}
+                      </div>
+                    </div>
+                    <div><label style={lbl}>Working Distance</label><input style={inp} type='text' value={form.energized_arc_distance} onChange={e => set('energized_arc_distance', e.target.value)} /></div>
+                  </div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Available incident energy or arc flash PPE Category</label><input style={inp} type='text' value={form.energized_arc_energy} onChange={e => set('energized_arc_energy', e.target.value)} /></div>
+                    <div><label style={lbl}>Arc flash boundary</label><input style={inp} type='text' value={form.energized_arc_boundary} onChange={e => set('energized_arc_boundary', e.target.value)} /></div>
+                  </div>
+                  <div><label style={lbl}>Necessary arc flash PPE</label><input style={inp} type='text' value={form.energized_arc_ppe} onChange={e => set('energized_arc_ppe', e.target.value)} /></div>
+
+                  <div style={{ ...subTitle, marginTop: '14px' }}>Safety Checklist</div>
+                  {[['energized_safety_lighting','Alternate source lighting for work and emergency needs is provided'],['energized_safety_barricades','Use barricades and warning signs as required'],['energized_safety_insulated','Insulated tools and equipment required. Inspect for defects per NEC.']].map(([k,l]) => <CheckRow key={k} label={l} fieldKey={k} />)}
+
+                  <div style={{ ...subTitle, marginTop: '14px' }}>UNMH Sign-Off</div>
+                  <SigTable rows={[{label:'UNMH Project Manager',nameKey:'energized_pm_name'},{label:'UNMH Electrical Engineer (Reviewer)',nameKey:'energized_engineer_name'},{label:'UNMH Safety Officer (Reviewer)',nameKey:'energized_safety_officer_name'},{label:'UNMH Facility Manager (Approver)',nameKey:'energized_facility_manager_name'}]} />
+                  <div style={{ marginTop: '14px' }}>
+                    <div style={subTitle}>Do you agree the above described work can be done safely?</div>
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                      {[['energized_agree','UNMH Agreement'],['energized_gc_agree','General Contractor Agreement'],['energized_elec_agree','Electrical Contractor Agreement']].map(([k,l]) => (
+                        <div key={k} style={{ flex: 1 }}>
+                          <label style={lbl}>{l}</label>
+                          <div style={{ display: 'flex', gap: '16px', marginTop: '4px' }}>
+                            {['Yes','No'].map(v => <label key={v} style={{ display: 'flex', gap: '5px', fontSize: '13px', cursor: 'pointer', fontWeight: '700', color: form[k] === 'Yes' ? '#16a34a' : form[k] === 'No' ? '#dc2626' : '#374151' }}><input type='radio' name={k} checked={form[k] === v} onChange={() => set(k, v)} /> {v}</label>)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </YNField>
+
+              {/* HOT WORK */}
+              <div style={subTitle}>HOT WORK</div>
+              <YNField label='Will hot work be required? (Follow OSHA Regulations, UNM/UNMH Policies)' fieldKey='hot_required'>
+                <div style={permitBox}>
+                  <div style={permitTitle}>🔥 HOT WORK PERMIT — University of New Mexico Hospital</div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Project Name</label><input style={inp} type='text' value={form.hot_project_name} onChange={e => set('hot_project_name', e.target.value)} /></div>
+                    <div><label style={lbl}>Location of Project</label><input style={inp} type='text' value={form.hot_location_project} onChange={e => set('hot_location_project', e.target.value)} /></div>
+                  </div>
+                  <div style={row3}>
+                    <div><label style={lbl}>Start Date</label><input style={inp} type='date' value={form.hot_start_date} onChange={e => set('hot_start_date', e.target.value)} /></div>
+                    <div><label style={lbl}>Project Manager</label><input style={inp} type='text' value={form.hot_manager} onChange={e => set('hot_manager', e.target.value)} /></div>
+                    <div><label style={lbl}>Estimated Duration</label><input style={inp} type='text' value={form.hot_duration} onChange={e => set('hot_duration', e.target.value)} /></div>
+                  </div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Contractor(s) Performing Work</label><input style={inp} type='text' value={form.hot_contractors} onChange={e => set('hot_contractors', e.target.value)} /></div>
+                    <div><label style={lbl}>General Contractor Point of Contact</label><input style={inp} type='text' value={form.hot_gc_contact} onChange={e => set('hot_gc_contact', e.target.value)} /></div>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Description of Work</label><textarea style={ta} value={form.hot_description} onChange={e => set('hot_description', e.target.value)} /></div>
+
+                  <div style={subTitle}>Permit Duration</div>
+                  <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    {[['hot_permit_duration_daily','Daily'],['hot_permit_duration_project','Project Duration'],['hot_permit_duration_weekly','Weekly'],['hot_permit_duration_annual','Annual']].map(([k,l]) => (
+                      <label key={k} style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', cursor: 'pointer' }}>
+                        <input type='checkbox' checked={!!form[k]} onChange={e => set(k, e.target.checked)} /> {l}
+                      </label>
+                    ))}
+                  </div>
+
+                  <div style={subTitle}>Type of Work</div>
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    {[['hot_type_welding','Welding'],['hot_type_tack','Tack Welding'],['hot_type_cutting','Cutting'],['hot_type_sweating','Sweating'],['hot_type_brazing','Brazing'],['hot_type_hottap','Hot Tap'],['hot_type_soldering','Soldering']].map(([k,l]) => (
+                      <label key={k} style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', cursor: 'pointer' }}>
+                        <input type='checkbox' checked={!!form[k]} onChange={e => set(k, e.target.checked)} /> {l}
+                      </label>
+                    ))}
+                    <label style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px' }}>
+                      Other: <input style={{ ...inp, width: '120px' }} type='text' value={form.hot_type_other} onChange={e => set('hot_type_other', e.target.value)} />
+                    </label>
+                  </div>
+
+                  <div style={subTitle}>Type of Units</div>
+                  <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    {[['hot_unit_acetylene','Acetylene'],['hot_unit_butane','Butane'],['hot_unit_electric','Electric Arc']].map(([k,l]) => (
+                      <label key={k} style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', cursor: 'pointer' }}>
+                        <input type='checkbox' checked={!!form[k]} onChange={e => set(k, e.target.checked)} /> {l}
+                      </label>
+                    ))}
+                    <label style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px' }}>
+                      Other: <input style={{ ...inp, width: '120px' }} type='text' value={form.hot_unit_other} onChange={e => set('hot_unit_other', e.target.value)} />
+                    </label>
+                  </div>
+
+                  <div style={subTitle}>Primary Safety Checks</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '14px' }}>
+                    <thead>
+                      <tr style={{ background: '#007a86' }}>
+                        <th style={{ padding: '7px 10px', color: '#fff', textAlign: 'left', width: '60px' }}>YES</th>
+                        <th style={{ padding: '7px 10px', color: '#fff', textAlign: 'left', width: '60px' }}>N/A</th>
+                        <th style={{ padding: '7px 10px', color: '#fff', textAlign: 'left' }}>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[['hot_check_extinguisher','Fire Extinguishers: Ensure fire extinguishers are on hand and adequate type/size; all operators trained.'],['hot_check_suppression','Fire Suppression: Ensure detection/suppression system is in operation. If systems must be shut down, notify PM at least 24 hours in advance.'],['hot_check_combustibles','Combustibles & Flammables Cleared: All combustible/flammable materials kept at least 35 ft. from operation and protected.'],['hot_check_ventilation','Ventilation: Proper ventilation maintained throughout operation. Scrubbers/odor eaters/carbon filters may be required.'],['hot_check_protection','Protection: Shielding or welding blankets present if deemed necessary. Precautions to reduce airborne sparks.'],['hot_check_spotter','Fire Spotter: Contractor will provide a fire spotter during operation and for one hour after completion.'],['hot_check_notifications','Notifications: Post warning signs. Prevent tripping hazards. Coordinate with other operations in progress.'],['hot_check_equipment','Equipment: Cutting/welding equipment checked and in proper working order.']].map(([k,l], i) => (
+                        <tr key={k} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                          <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                            <input type='radio' name={k} checked={form[k] === 'yes'} onChange={() => set(k, 'yes')} />
+                          </td>
+                          <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                            <input type='radio' name={k} checked={form[k] === 'na'} onChange={() => set(k, 'na')} />
+                          </td>
+                          <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontSize: '12px' }}>{l}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ marginBottom: '14px' }}><label style={lbl}>Special Precautions</label><textarea style={ta} value={form.hot_special_precautions} onChange={e => set('hot_special_precautions', e.target.value)} placeholder='NOTE: If working in confined space, a Confined Space Permit will also be required.' /></div>
+
+                  <div style={subTitle}>UNMH Sign-Off</div>
+                  <SigTable rows={[{label:'UNMH Project Manager',nameKey:'hot_pm_name'},{label:'UNMH Safety',nameKey:'hot_safety_name'},{label:'UNMH Life Safety',nameKey:'hot_lifesafety_name'}]} />
+                  <div style={{ ...subTitle, marginTop: '14px' }}>Contractor Agreement</div>
+                  <SigTable rows={[{label:'General Contractor',nameKey:'hot_gc_name'},{label:'Hot Work Operator',nameKey:'hot_operator_name'},{label:'Hot Work Spotter',nameKey:'hot_spotter_name'}]} />
+                </div>
+              </YNField>
+
+              {/* CONFINED SPACE */}
+              <div style={subTitle}>CONFINED SPACE</div>
+              <YNField label='Will Confined Space Entry be required? A "Confined Space" means a space large enough for a worker to bodily enter with limited means for entry or exit.' fieldKey='confined_required'>
+                <div style={permitBox}>
+                  <div style={permitTitle}>⚠️ CONFINED SPACE ENTRY PERMIT — University of New Mexico Hospital</div>
+                  <div style={infoBox}>All employees entering the space shall have proof of training (Confined Space cert within past 3 years, OSHA 30 within past 5 years). UNM Hospital will take all precautions to prevent unauthorized entry into confined spaces.</div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Project Name</label><input style={inp} type='text' value={form.confined_project_name} onChange={e => set('confined_project_name', e.target.value)} /></div>
+                    <div><label style={lbl}>Location of Project</label><input style={inp} type='text' value={form.confined_location_project} onChange={e => set('confined_location_project', e.target.value)} /></div>
+                  </div>
+                  <div style={row3}>
+                    <div><label style={lbl}>Start Date</label><input style={inp} type='date' value={form.confined_start_date} onChange={e => set('confined_start_date', e.target.value)} /></div>
+                    <div><label style={lbl}>Project Manager</label><input style={inp} type='text' value={form.confined_manager} onChange={e => set('confined_manager', e.target.value)} /></div>
+                    <div><label style={lbl}>Estimated Duration</label><input style={inp} type='text' value={form.confined_duration} onChange={e => set('confined_duration', e.target.value)} /></div>
+                  </div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Contractor(s) Performing Work</label><input style={inp} type='text' value={form.confined_contractors} onChange={e => set('confined_contractors', e.target.value)} /></div>
+                    <div><label style={lbl}>General Contractor Point of Contact</label><input style={inp} type='text' value={form.confined_gc_contact} onChange={e => set('confined_gc_contact', e.target.value)} /></div>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Description of Work</label><textarea style={ta} value={form.confined_description} onChange={e => set('confined_description', e.target.value)} /></div>
+
+                  <div style={subTitle}>Permit Duration</div>
+                  <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    {[['confined_duration_daily','Daily'],['confined_duration_project','Project Duration'],['confined_duration_weekly','Weekly'],['confined_duration_annual','Annual']].map(([k,l]) => (
+                      <label key={k} style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', cursor: 'pointer' }}>
+                        <input type='checkbox' checked={!!form[k]} onChange={e => set(k, e.target.checked)} /> {l}
+                      </label>
+                    ))}
+                  </div>
+
+                  <div style={subTitle}>Potential Hazards</div>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                    {[['confined_hazard_injury','Injury/Sudden Illness'],['confined_hazard_residue','Hazardous Residue'],['confined_hazard_dust','Respirable Dust'],['confined_hazard_flash','Flash Fire'],['confined_hazard_engulfment','Engulfment'],['confined_hazard_inflow_solid','Solid Material In-Flow'],['confined_hazard_outflow','Solid Material Out-Flow'],['confined_hazard_lighting','Poor Lighting'],['confined_hazard_steam','Steam/Hot Water In-Flow'],['confined_hazard_footing','Poor Footing'],['confined_hazard_atmosphere','Hazardous Atmosphere'],['confined_hazard_fall','Fall Hazard'],['confined_hazard_electrocution','Electrocution'],['confined_hazard_machinery','Moving Machinery']].map(([k,l]) => (
+                      <label key={k} style={{ display: 'flex', gap: '5px', alignItems: 'center', fontSize: '12px', cursor: 'pointer', background: form[k] ? '#fef3c7' : '#f9fafb', padding: '4px 8px', borderRadius: '4px', border: `1px solid ${form[k] ? '#fbbf24' : '#e5e7eb'}` }}>
+                        <input type='checkbox' checked={!!form[k]} onChange={e => set(k, e.target.checked)} /> {l}
+                      </label>
+                    ))}
+                    <label style={{ display: 'flex', gap: '5px', alignItems: 'center', fontSize: '12px' }}>
+                      Other: <input style={{ ...inp, width: '140px' }} type='text' value={form.confined_hazard_other} onChange={e => set('confined_hazard_other', e.target.value)} />
+                    </label>
+                  </div>
+
+                  <div style={subTitle}>Required Precautions/Testing Prior to Entry</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                    {[['confined_test_o2','O2 Percentage Present'],['confined_test_lel','Lower Explosive Limit (LEL) %'],['confined_test_h2s','PPM Hydrogen Sulfide (H2S)'],['confined_test_co','PPM Carbon Monoxide (CO)']].map(([k,l]) => (
+                      <div key={k}><label style={lbl}>{l}</label><input style={inp} type='text' value={form[k]} onChange={e => set(k, e.target.value)} /></div>
+                    ))}
+                  </div>
+
+                  <div style={subTitle}>Required Precautions During Entry</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '14px' }}>
+                    <thead>
+                      <tr style={{ background: '#007a86' }}>
+                        <th style={{ padding: '7px 10px', color: '#fff', width: '50px' }}>Yes</th>
+                        <th style={{ padding: '7px 10px', color: '#fff', width: '50px' }}>N/A</th>
+                        <th style={{ padding: '7px 10px', color: '#fff', textAlign: 'left' }}>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[['confined_during_surveillance','Surveillance Method'],['confined_during_ventilation','Ventilation'],['confined_during_monitor','Monitor Atmosphere'],['confined_during_respirator','Respirator'],['confined_during_ppe','Additional PPE'],['confined_during_harness','Safety Harness/Lifeline'],['confined_during_hoist','Safety Hoist'],['confined_during_gfi','GFI/Low Voltage Equipment']].map(([k,l],i) => (
+                        <tr key={k} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                          <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', textAlign: 'center' }}><input type='radio' name={k} checked={form[k]==='yes'} onChange={() => set(k,'yes')} /></td>
+                          <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', textAlign: 'center' }}><input type='radio' name={k} checked={form[k]==='na'} onChange={() => set(k,'na')} /></td>
+                          <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb' }}>{l}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Special Precautions</label><textarea style={ta} value={form.confined_special_precautions} onChange={e => set('confined_special_precautions', e.target.value)} placeholder='NOTE: If hot work will be present, a Hot Work Permit will also be required.' /></div>
+
+                  <div style={subTitle}>Emergency Action Plan and Response Information</div>
+                  <div style={infoBox}>Entrants shall immediately self-evacuate if a hazard is detected. Stand-by person should use nearest telephone to CALL 911. Stand-by person shall not enter to perform an unassisted internal rescue.</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '14px' }}>
+                    {[['confined_emergency_agency','Agency Designated to Respond'],['confined_emergency_access','Access to Confined Space'],['confined_emergency_small_opening','Small Entry Opening'],['confined_emergency_foreseeable','Most Likely Foreseeable Emergency'],['confined_emergency_worst_case','Worst Case Scenario']].map(([k,l]) => (
+                      <div key={k}><label style={lbl}>{l}</label><input style={inp} type='text' value={form[k]} onChange={e => set(k, e.target.value)} /></div>
+                    ))}
+                  </div>
+
+                  <div style={subTitle}>UNMH Sign-Off</div>
+                  <SigTable rows={[{label:'UNMH Project Manager',nameKey:'confined_pm_name'},{label:'UNMH Safety',nameKey:'confined_safety_name'}]} />
+                  <div style={{ ...subTitle, marginTop: '14px' }}>Contractor Agreement</div>
+                  <SigTable rows={[{label:'General Contractor',nameKey:'confined_gc_name'},{label:'Confined Space Personnel',nameKey:'confined_personnel_name'}]} />
+                </div>
+              </YNField>
+            </div>
+
+            {/* Form 1 Sign-Off */}
+            <div style={card}>
+              <div style={secTitle}>Sign-Off · UNMH Project Manager</div>
+              <SigTable rows={[{label:'UNMH Project Manager',nameKey:'form1_pm_name'}]} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+              <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>💾 Save Draft</button>
+              <button onClick={() => setStep(7)} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>Next: Form 2 · ICRA →</button>
+            </div>
+          </>
+        )}
+
+        {/* ═══ FORM 2 — ICRA ═══ */}
+        {step === 7 && (
+          <>
+            <div style={card}>
+              <div style={secTitle}>Infection Control Risk Assessment (ICRA) · Form 2</div>
+              <div style={infoBox}>The ICRA will be performed and completed prior to the initiation of all projects, repairs and/or maintenance in all buildings and areas where occupied by patients, staff and/or visitors. The completed ICRA will be maintained in the project file for the duration of the project.</div>
+
+              <div style={subTitle}>Step 1 · Identify Type of Construction Activity (Type A–D)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                {[['A','TYPE A — Inspection & Non-Invasive','Ceiling tile removal for visual inspection (≤1 per 50 sq ft) · Painting (not sanding) · Wallcovering, electrical trim, minor plumbing · Activities that do not generate dust'],['B','TYPE B — Small Scale, Short Duration, Minimal Dust','Telephone/computer cabling installation · Access to chase spaces · Cutting walls/ceiling where dust migration can be controlled'],['C','TYPE C — Moderate to High Dust / Fixed Component Removal','Sanding walls for painting or wall covering · Removal of floorcoverings, ceiling tiles · New wall construction · Minor duct work or electrical above ceilings · Any activity beyond a single work-shift'],['D','TYPE D — Major Demolition & Construction','Consecutive work shifts required · Heavy demolition or removal of complete cabling systems · New construction']].map(([v,t,d]) => (
+                  <label key={v} onClick={() => set('construction_type', v)} style={{ border: `2px solid ${form.construction_type === v ? '#007a86' : '#e5e7eb'}`, borderRadius: '8px', padding: '14px', cursor: 'pointer', background: form.construction_type === v ? '#f0f9ff' : '#fff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+                      <input type='radio' name='construction_type' checked={form.construction_type === v} onChange={() => set('construction_type', v)} />
+                      <span style={{ fontWeight: '800', fontSize: '13px', color: '#007a86' }}>{t}</span>
+                    </div>
+                    <p style={{ fontSize: '11px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>{d}</p>
+                  </label>
+                ))}
+              </div>
+
+              <div style={subTitle}>Step 2 · Identify Patient Risk Group</div>
+              <div style={infoBox}>NOTE: If more than one risk group is identified, select the higher risk group.</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px', marginBottom: '20px' }}>
+                {[['Low','LOW RISK','Office areas'],['Medium','MEDIUM RISK','Cardiology · Echocardiography · Endoscopy · Nuclear Medicine · Physical Therapy · Radiology/MRI · Respiratory Therapy'],['High','HIGH RISK','CCU · Emergency Room · Labor & Delivery · Laboratories · Medical Units · Newborn Nursery · Outpatient Surgery · Pediatrics · Pharmacy · PACU · Surgical Units'],['Highest','HIGHEST RISK','Any area caring for immunocompromised patients · Burn Unit · Cardiac Cath Lab · Central Sterile Supply · ICUs · Negative pressure isolation rooms · Oncology · Operating Rooms / C-section rooms']].map(([v,t,d]) => (
+                  <label key={v} onClick={() => set('patient_risk_group', v)} style={{ border: `2px solid ${form.patient_risk_group === v ? icraColors[ICRA_MATRIX['A']?.[v]] || '#007a86' : '#e5e7eb'}`, borderRadius: '8px', padding: '12px', cursor: 'pointer', background: form.patient_risk_group === v ? '#f9fafb' : '#fff' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                      <input type='radio' name='patient_risk_group' checked={form.patient_risk_group === v} onChange={() => set('patient_risk_group', v)} />
+                      <span style={{ fontWeight: '800', fontSize: '12px' }}>{t}</span>
+                    </div>
+                    <p style={{ fontSize: '10px', color: '#6b7280', margin: 0, lineHeight: '1.5' }}>{d}</p>
+                  </label>
+                ))}
+              </div>
+
+              {/* ICRA Class result */}
+              {form.icra_class && (
+                <div style={{ border: `2px solid ${icraColors[form.icra_class]}`, borderRadius: '10px', padding: '20px', marginBottom: '20px', textAlign: 'center', background: '#fafafa' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginBottom: '6px' }}>Determined ICRA Class</div>
+                  <div style={{ fontSize: '52px', fontWeight: '900', color: icraColors[form.icra_class], lineHeight: 1 }}>{form.icra_class}</div>
+                  <div style={{ fontSize: '13px', color: '#374151', marginTop: '8px' }}>
+                    {form.icra_class === 'I' && 'Lowest risk — Execute work to minimize raising dust. Immediately replace any displaced ceiling tile. Clean work area upon completion.'}
+                    {form.icra_class === 'II' && 'Low-medium risk — Active means to prevent airborne dust. Water mist work surfaces. Seal unused doors. Block/seal air vents. Dust mats at entrances.'}
+                    {form.icra_class === 'III' && 'Medium-high risk — Remove/isolate HVAC. Complete all critical barriers. Maintain negative air pressure via HEPA filtration. Contain waste in covered containers.'}
+                    {form.icra_class === 'IV' && 'Highest risk — Isolate HVAC. Complete all critical barriers. Maintain negative air pressure. Construct anteroom. All personnel must be HEPA vacuumed or wear disposable coveralls. Shoe covers required.'}
+                  </div>
+                  {(form.icra_class === 'III' || form.icra_class === 'IV') && (
+                    <div style={{ marginTop: '10px', background: '#fef2f2', border: '1px solid #fca5a5', borderRadius: '6px', padding: '8px 12px', fontSize: '12px', color: '#dc2626', fontWeight: '700' }}>
+                      ⚠️ Infection Control Approval Required: Class {form.icra_class} control procedures are necessary. Infection Control Department must approve before work begins.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ICRA Matrix */}
+              <div style={subTitle}>ICRA Matrix Reference</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '20px' }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb' }}>
-                    <th style={{ padding: '8px', border: '1px solid #e5e7eb', textAlign: 'left' }}>Construction Type</th>
-                    <th style={{ padding: '8px', border: '1px solid #e5e7eb' }}>Low</th>
-                    <th style={{ padding: '8px', border: '1px solid #e5e7eb' }}>Medium</th>
-                    <th style={{ padding: '8px', border: '1px solid #e5e7eb' }}>High</th>
-                    <th style={{ padding: '8px', border: '1px solid #e5e7eb' }}>Highest</th>
+                  <tr style={{ background: '#007a86' }}>
+                    <th style={{ padding: '8px 10px', color: '#fff', textAlign: 'left' }}>Construction Type</th>
+                    {['Low Risk','Medium Risk','High Risk','Highest Risk'].map(r => <th key={r} style={{ padding: '8px 10px', color: '#fff', textAlign: 'center' }}>{r}</th>)}
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(ICRA_MATRIX).map(([type, risks]) => (
-                    <tr key={type} style={{ background: form.construction_type === type ? '#fef2f2' : '#fff' }}>
-                      <td style={{ padding: '8px', border: '1px solid #e5e7eb', fontWeight: '700' }}>Type {type}</td>
+                  {Object.entries(ICRA_MATRIX).map(([type, risks], i) => (
+                    <tr key={type} style={{ background: form.construction_type === type ? '#f0f9ff' : i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                      <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb', fontWeight: '700' }}>Type {type}</td>
                       {Object.entries(risks).map(([risk, cls]) => (
-                        <td key={risk} style={{ padding: '8px', border: '1px solid #e5e7eb', textAlign: 'center', fontWeight: '800', color: icraColors[cls], background: form.construction_type === type && form.patient_risk_group === risk ? '#fef2f2' : '' }}>
+                        <td key={risk} style={{ padding: '8px 10px', border: '1px solid #e5e7eb', textAlign: 'center', fontWeight: '900', fontSize: '15px', color: icraColors[cls], background: form.construction_type === type && form.patient_risk_group === risk ? '#fef9e7' : '' }}>
                           {cls}
                         </td>
                       ))}
@@ -225,225 +944,220 @@ export default function AssessPage() {
                   ))}
                 </tbody>
               </table>
+
+              {/* ICRA during/after table */}
+              <div style={subTitle}>Required Infection Control Procedures</div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '20px' }}>
+                <thead>
+                  <tr style={{ background: '#007a86' }}>
+                    <th style={{ padding: '8px 10px', color: '#fff', width: '60px', textAlign: 'center' }}>Class</th>
+                    <th style={{ padding: '8px 10px', color: '#fff' }}>During Construction</th>
+                    <th style={{ padding: '8px 10px', color: '#fff' }}>Project Completion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[['I','Execute work to minimize raising dust. Immediately replace any displaced ceiling tile.','Clean work area upon completion of task.'],['II','Active means to prevent airborne dust. Water mist work surfaces. Seal unused doors. Block/seal air vents. Dust mats at entrances. Remove/isolate HVAC.','Wipe surfaces with disinfectant. Contain waste in covered containers. Wet mop/HEPA vacuum before leaving. Restore HVAC.'],['III','Remove/isolate HVAC. Complete all critical barriers (sheetrock, plywood, plastic). Maintain negative air pressure via HEPA filtration. Contain waste in covered containers. Cover transport carts.','Do not remove barriers until inspected by Safety Dept., Infection Prevention & Control, and cleaned by Environmental Services. Vacuum with HEPA. Wet mop with disinfectant. Restore HVAC.'],['IV','Isolate HVAC. Complete all critical barriers. Maintain negative air pressure. Seal holes, pipes, conduits. Construct anteroom. All personnel must be vacuumed with HEPA or wear disposable coveralls. Shoe covers required.','Do not remove barriers until inspected and cleaned. Contain waste. Cover carts. HEPA vacuum. Wet mop with disinfectant. Restore HVAC.']].map(([cls,during,after],i) => (
+                    <tr key={cls} style={{ background: form.icra_class === cls ? '#fef9e7' : i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                      <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb', textAlign: 'center', fontWeight: '900', fontSize: '16px', color: icraColors[cls] }}>{cls}</td>
+                      <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb', fontSize: '11px', lineHeight: '1.5' }}>{during}</td>
+                      <td style={{ padding: '8px 10px', border: '1px solid #e5e7eb', fontSize: '11px', lineHeight: '1.5' }}>{after}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div style={subTitle}>Infection Control Review Questions</div>
+              {[['icra_q1','Does the project allow for the required number & type of handwashing sinks?'],['icra_q2','Does the Infection Prevention & Control staff agree with the minimum number of sinks?'],['icra_q3','Does the Infection Prevention & Control staff agree with the plans relative to clean and soiled rooms?'],['icra_q4','Plan to discuss containment issues with the project team (traffic flow, housekeeping, debris removal how and when)?']].map(([k,l]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 12px', borderBottom: '1px solid #f3f4f6' }}>
+                  <span style={{ fontSize: '13px', flex: 1 }}>{l}</span>
+                  {['Yes','No','N/A'].map(v => <label key={v} style={{ display: 'flex', gap: '4px', alignItems: 'center', fontSize: '13px', cursor: 'pointer', fontWeight: form[k] === v ? '700' : '400', color: form[k] === v ? (v === 'Yes' ? '#16a34a' : v === 'No' ? '#dc2626' : '#374151') : '#6b7280' }}><input type='radio' name={k} checked={form[k] === v} onChange={() => set(k, v)} /> {v}</label>)}
+                </div>
+              ))}
+              <div style={{ marginTop: '14px' }}><label style={lbl}>Comments</label><textarea style={ta} value={form.icra_comments} onChange={e => set('icra_comments', e.target.value)} /></div>
+              <div style={{ marginTop: '14px' }}>
+                <div style={subTitle}>Sign-Off · UNMH Infection Prevention & Control</div>
+                <SigTable rows={[{label:'UNMH Infection Prevention & Control',nameKey:'icra_ipc_name'}]} />
+              </div>
+              <div style={{ marginTop: '14px' }}><label style={lbl}>ICRA Notes / Special Conditions</label><textarea style={ta} value={form.icra_notes} onChange={e => set('icra_notes', e.target.value)} /></div>
             </div>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={lbl}>ICRA Notes / Special Conditions</label>
-              <textarea style={ta} placeholder='Any special infection control notes...' value={form.icra_notes} onChange={e => set('icra_notes', e.target.value)} />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+              <button onClick={() => setStep(1)} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>← Back: Form 1</button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>💾 Save Draft</button>
+                <button onClick={() => setActiveTab('lifesafety')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>Next: Life Safety →</button>
+              </div>
             </div>
-            <button onClick={() => setActiveTab('hot')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Hot Work →</button>
-          </div>
+          </>
         )}
 
-        {activeTab === 'hot' && (
-          <div style={card}>
-            <div style={secHdr}>Hot Work Permit</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '700' }}>
-                <input type='checkbox' checked={form.hot_work_required} onChange={e => set('hot_work_required', e.target.checked)} style={{ width: '18px', height: '18px' }} />
-                Hot Work Required for this project
-              </label>
-            </div>
-            {form.hot_work_required && (
-              <>
-                <div style={row}>
-                  <div>
-                    <label style={lbl}>Type of Hot Work</label>
-                    <select style={sel} value={form.hot_work_type} onChange={e => set('hot_work_type', e.target.value)}>
-                      <option value=''>-- Select --</option>
-                      <option>Welding</option>
-                      <option>Cutting / Grinding</option>
-                      <option>Brazing / Soldering</option>
-                      <option>Torch work</option>
-                      <option>Other open flame</option>
-                    </select>
+        {/* ═══ LIFE SAFETY ═══ */}
+        {activeTab === 'lifesafety' && (
+          <>
+            <div style={card}>
+              <div style={secTitle}>Life Safety · Required Prior to and During All Construction</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
+                {['Smoke tight construction barrier must be constructed prior to beginning project and maintained for the duration','Fire alarm and suppression systems must remain intact. Work or alterations require advance notification and approval of the Life Safety Department','Fire alarm devices will be securely attached and not left hanging by power wires','When smoke tight ceiling assemblies are removed, fire sprinklers will be turned up to within 12 inches of the deck or roof above','Portable fire extinguishers are provided, inspected annually and monthly','All egress pathways and exit doors are to be maintained free and clear of tools, equipment, and debris','Exit signs and lights will be maintained within the construction/work site','All penetrations through fire-rated and smoke barriers will be sealed with approved HILTI (or equivalent) fire stop system by a Certified technician. All penetrations sealed prior to end of each workday','No wires, cables or other items shall be placed on fire sprinkler system piping','ILSM documentation will be readily accessible for the duration of the project','Debris removal must be by a clean covered cart. Work area is maintained clean and orderly'].map((item, i) => (
+                  <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', fontSize: '12px', color: '#374151', padding: '6px 10px', background: i % 2 === 0 ? '#f9fafb' : '#fff', borderRadius: '4px' }}>
+                    <span style={{ color: '#007a86', fontWeight: '800', marginTop: '1px' }}>✓</span> {item}
                   </div>
-                  <div>
-                    <label style={lbl}>Location / Area</label>
-                    <input style={inp} type='text' placeholder='Room/area description' value={form.hot_work_location} onChange={e => set('hot_work_location', e.target.value)} />
-                  </div>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Fire Watch Name</label>
-                  <input style={inp} type='text' placeholder='Assigned fire watch person' value={form.hot_work_fire_watch} onChange={e => set('hot_work_fire_watch', e.target.value)} />
-                </div>
-                <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
-                    <input type='checkbox' checked={form.hot_work_suppression_impaired} onChange={e => set('hot_work_suppression_impaired', e.target.checked)} style={{ width: '16px', height: '16px' }} />
-                    Fire suppression system impaired
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', cursor: 'pointer' }}>
-                    <input type='checkbox' checked={form.hot_work_detector_isolated} onChange={e => set('hot_work_detector_isolated', e.target.checked)} style={{ width: '16px', height: '16px' }} />
-                    Smoke detector isolated
-                  </label>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Hot Work Notes</label>
-                  <textarea style={ta} placeholder='Additional notes...' value={form.hot_work_notes} onChange={e => set('hot_work_notes', e.target.value)} />
-                </div>
-              </>
-            )}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setActiveTab('icra')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
-              <button onClick={() => setActiveTab('confined')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Confined Space →</button>
+                ))}
+              </div>
             </div>
-          </div>
+
+            <div style={card}>
+              <div style={secTitle}>Life Safety Risk Items</div>
+
+              {/* ABOVE CEILING */}
+              <div style={subTitle}>ABOVE CEILING</div>
+              <YNField label='Will work be performed that requires penetrating any fire-rated barrier/wall or smoke barrier, or any work done above the ceiling? (This section serves as the Above the Ceiling Work Permit)' fieldKey='above_ceiling_required'>
+                <div style={permitBox}>
+                  <div style={permitTitle}>🏗️ ABOVE CEILING WORK PERMIT — University of New Mexico Hospital</div>
+                  <div style={infoBox}>Two inspections required per project. When working above ceilings, a permit must be obtained during the PCRA. A Pre-Inspection must occur prior to commencement of work. Final inspection is required once work is completed.</div>
+                  <div style={row2}>
+                    <div><label style={lbl}>Project Number</label><input style={inp} type='text' value={form.ac_project_number} onChange={e => set('ac_project_number', e.target.value)} /></div>
+                    <div><label style={lbl}>Project Manager</label><input style={inp} type='text' value={form.ac_manager} onChange={e => set('ac_manager', e.target.value)} /></div>
+                  </div>
+                  <div style={subTitle}>Inspection Type</div>
+                  <div style={{ display: 'flex', gap: '24px', marginBottom: '14px' }}>
+                    {[['Pre-Inspection','Pre-Inspection'],['Final Inspection','Final Inspection']].map(([v,l]) => (
+                      <label key={v} style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', cursor: 'pointer' }}>
+                        <input type='radio' name='ac_inspection_type' checked={form.ac_inspection_type === v} onChange={() => set('ac_inspection_type', v)} /> {l}
+                      </label>
+                    ))}
+                  </div>
+                  <div style={row3}>
+                    <div><label style={lbl}>Permit Start Date</label><input style={inp} type='date' value={form.ac_permit_start} onChange={e => set('ac_permit_start', e.target.value)} /></div>
+                    <div><label style={lbl}>Permit End Date</label><input style={inp} type='date' value={form.ac_permit_end} onChange={e => set('ac_permit_end', e.target.value)} /></div>
+                    <div><label style={lbl}>Individuals Authorized to Work Above Ceiling</label><input style={inp} type='text' value={form.ac_authorized_workers} onChange={e => set('ac_authorized_workers', e.target.value)} /></div>
+                  </div>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Type of Work</label><textarea style={ta} value={form.ac_work_type} onChange={e => set('ac_work_type', e.target.value)} /></div>
+
+                  <div style={subTitle}>Inspection Checklist</div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', marginBottom: '14px' }}>
+                    <thead>
+                      <tr style={{ background: '#007a86' }}>
+                        <th style={{ padding: '7px 10px', color: '#fff', width: '50px' }}>Pass</th>
+                        <th style={{ padding: '7px 10px', color: '#fff', width: '50px' }}>Fail</th>
+                        <th style={{ padding: '7px 10px', color: '#fff', width: '50px' }}>N/A</th>
+                        <th style={{ padding: '7px 10px', color: '#fff', textAlign: 'left' }}>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[['ac_check1','All penetrations in fire and/or smoke barriers are appropriately sealed'],['ac_check2','Penetrations in floor slabs above and below are appropriately sealed'],['ac_check3','Open conduit ends are sealed — J-boxes closed'],['ac_check4','Fire Sprinkler piping/hangers are clear and not used to support other items'],['ac_check5','Ceilings/Grids/Systems are clear and not used to support other items'],['ac_check6','All ceiling assemblies are replaced and in good condition (no holes, penetrations). Sprinkler escutcheons replaced leaving no greater than 1/8" gap.']].map(([k,l],i) => (
+                        <tr key={k} style={{ background: i % 2 === 0 ? '#fff' : '#f9fafb' }}>
+                          {['pass','fail','na'].map(v => <td key={v} style={{ padding: '6px 10px', border: '1px solid #e5e7eb', textAlign: 'center' }}><input type='radio' name={k} checked={form[k] === v} onChange={() => set(k, v)} /></td>)}
+                          <td style={{ padding: '6px 10px', border: '1px solid #e5e7eb', fontSize: '11px' }}>{l}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div style={{ marginBottom: '12px' }}><label style={lbl}>Special Conditions</label><textarea style={ta} value={form.ac_special_conditions} onChange={e => set('ac_special_conditions', e.target.value)} /></div>
+                  <div style={subTitle}>UNMH Sign-Off</div>
+                  <SigTable rows={[{label:'UNMH Project Manager',nameKey:'ac_pm_name'},{label:'UNMH Life Safety',nameKey:'ac_lifesafety_name'},{label:'UNMH Facilities',nameKey:'ac_facilities_name'}]} />
+                  <div style={{ ...subTitle, marginTop: '14px' }}>Contractor Agreement</div>
+                  <SigTable rows={[{label:'General Contractor',nameKey:'ac_gc_name'}]} />
+                </div>
+              </YNField>
+
+              {/* ACCESS DOORS */}
+              <div style={subTitle}>ACCESS DOORS</div>
+              <YNField label='Does the project involve the installation of access-controlled doors within path(s) of egress? (NFPA 101 7.2.1.6.2)' fieldKey='access_doors_required' notesKey='access_doors_comments' notesLabel='Comments'>
+                <div style={infoBox}>Per NFPA 101, all of the following must be met: A sensor shall be provided on the egress side · Door leaves shall automatically unlock upon loss of power · A manual release device shall be located on the egress side, 40–48 in. vertically above floor, within 60 in. of secured door opening, clearly identified with "PUSH TO EXIT" sign · When operated, the manual release device shall remain unlocked for not less than 30 seconds.</div>
+              </YNField>
+
+              {/* FIRE SYSTEM */}
+              <div style={subTitle}>FIRE SYSTEM</div>
+              <YNField label='Does the project involve the installation of a new fire alarm (including fire/smoke dampers) and/or fire sprinkler system, or modification of an existing system?' fieldKey='fire_system_required' notesKey='fire_system_comments' notesLabel='Comments'>
+                <div style={infoBox}>PM responsibilities: Schedule certified vendor to perform a pre-test · Assure Life Safety is present during the test · Provide Life Safety with copies of system test results · Contact the New Mexico State Fire Marshal's Office for inspection and acceptance · Provide updated and current fire alarm/sprinkler system shop drawings to Life Safety.</div>
+              </YNField>
+
+              {/* BARRIERS */}
+              <div style={subTitle}>BARRIERS</div>
+              <YNField label='Does the project involve the installation of new fire and/or smoke rated barriers, walls, doors, fire/smoke dampers, exit lighting or exit signs, or modification of existing components?' fieldKey='barriers_required' notesKey='barriers_comments' notesLabel='Comments'>
+                <div style={infoBox}>PM responsibilities: Contact the SFMO, UNMH Project Manager, and Life Safety Department for inspection · Inform Life Safety of inspection results · Provide copies of the SFMO acceptance letter · Provide updated and current Life Safety drawings of the completed project area to Life Safety.</div>
+              </YNField>
+            </div>
+
+            {/* ILSM */}
+            <div style={card}>
+              <div style={secTitle}>Interim Life Safety Assessment & Measures (ILSM)</div>
+              <div style={infoBox}>All construction projects, repair and maintenance activities require an Interim Life Safety Assessment. If fire alarms are taken out of service entirely, a fire watch is required. Smoke detectors may be covered/disabled for a maximum of 4 hours during any 24-hour period. Replacing smoke detectors with heat detectors is prohibited.</div>
+              <div style={row2}>
+                <div><label style={lbl}>Location of Project</label><input style={inp} type='text' value={form.ilsm_location} onChange={e => set('ilsm_location', e.target.value)} /></div>
+                <div><label style={lbl}>Description of Work (ILSM)</label><input style={inp} type='text' value={form.ilsm_description} onChange={e => set('ilsm_description', e.target.value)} /></div>
+              </div>
+
+              <div style={subTitle}>Assessment Criteria — If deficiency/condition cannot be corrected within 24 hours, use ILSM Matrix</div>
+              {[['ilsm_q1','The integrity of exit access, exit, or exit discharge features is compromised or altered'],['ilsm_q2','The integrity of the building\'s "defend in place" compartmental features (fire barriers, smoke barriers, floor slabs, corridor, fire and smoke doors and walls) is compromised'],['ilsm_q3','The building fire alarm system and/or fire detection will be out of service for more than 4 hours during a 24-hour period'],['ilsm_q4','The building fire suppression systems will be out of service for more than 10 hours during a 24-hour period'],['ilsm_q5','Involves temporary sources of ignition (cutting/welding/torch operations). If so, a HOT work permit is required'],['ilsm_q6','Involves the presence of large quantities (more than 64 cubic feet) of combustibles and debris to be left on site'],['ilsm_q7','Other Life Safety or Fire protection deficiencies']].map(([k,l]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '10px 12px', borderBottom: '1px solid #f3f4f6' }}>
+                  <span style={{ fontSize: '12px', flex: 1 }}>{l}</span>
+                  {['Yes','No','N/A'].map(v => <label key={v} style={{ display: 'flex', gap: '4px', alignItems: 'center', fontSize: '12px', cursor: 'pointer', fontWeight: form[k] === v ? '700' : '400', color: form[k] === v ? (v === 'Yes' ? '#dc2626' : v === 'No' ? '#16a34a' : '#374151') : '#6b7280' }}><input type='radio' name={k} checked={form[k] === v} onChange={() => set(k, v)} /> {v}</label>)}
+                </div>
+              ))}
+              <div style={{ marginTop: '12px' }}><label style={lbl}>Special Conditions</label><textarea style={ta} value={form.ilsm_special_conditions} onChange={e => set('ilsm_special_conditions', e.target.value)} /></div>
+
+              <div style={{ ...subTitle, marginTop: '16px' }}>ILSM Determination</div>
+              <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '14px' }}>
+                {[['ilsm_determination',['ILSM Required','ILSM Not Required']],['ilsm_fire_watch',['Fire Watch Required','Fire Watch Not Required']]].map(([k,opts]) => (
+                  <div key={k}>
+                    {opts.map(v => <label key={v} style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '13px', cursor: 'pointer', marginRight: '16px', fontWeight: form[k] === v ? '700' : '400' }}><input type='radio' name={k} checked={form[k] === v} onChange={() => set(k, v)} /> {v}</label>)}
+                  </div>
+                ))}
+              </div>
+
+              <div style={subTitle}>Sign-Off · UNMH Project Manager & Life Safety</div>
+              <SigTable rows={[{label:'UNMH Project Manager',nameKey:'ls_pm_name'},{label:'UNMH Life Safety',nameKey:'ls_lifesafety_name'}]} />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+              <button onClick={() => setStep(7)} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>← Back: Form 2</button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>💾 Save Draft</button>
+                <button onClick={() => setStep(9)} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>Next: Acknowledgement →</button>
+              </div>
+            </div>
+          </>
         )}
 
-        {activeTab === 'confined' && (
-          <div style={card}>
-            <div style={secHdr}>Confined Space Permit</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '700' }}>
-                <input type='checkbox' checked={form.confined_space_required} onChange={e => set('confined_space_required', e.target.checked)} style={{ width: '18px', height: '18px' }} />
-                Confined Space Work Required
-              </label>
-            </div>
-            {form.confined_space_required && (
-              <>
-                <div style={row}>
-                  <div>
-                    <label style={lbl}>Location / Space Description</label>
-                    <input style={inp} type='text' placeholder='Describe the confined space' value={form.confined_space_location} onChange={e => set('confined_space_location', e.target.value)} />
-                  </div>
-                  <div>
-                    <label style={lbl}>Attendant Name</label>
-                    <input style={inp} type='text' placeholder='Entry attendant' value={form.confined_space_attendant} onChange={e => set('confined_space_attendant', e.target.value)} />
-                  </div>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Identified Hazards</label>
-                  <textarea style={ta} placeholder='List all identified hazards...' value={form.confined_space_hazards} onChange={e => set('confined_space_hazards', e.target.value)} />
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Additional Notes</label>
-                  <textarea style={ta} placeholder='Additional notes...' value={form.confined_space_notes} onChange={e => set('confined_space_notes', e.target.value)} />
-                </div>
-              </>
-            )}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setActiveTab('hot')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
-              <button onClick={() => setActiveTab('energized')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Energized Elec. →</button>
-            </div>
-          </div>
-        )}
+        {/* ═══ ACKNOWLEDGEMENT ═══ */}
+        {step === 9 && (
+          <>
+            <div style={card}>
+              <div style={secTitle}>Acknowledgement</div>
+              <div style={infoBox}>The General/Prime Contractor hereby agrees to the project requirements outlined above to have all of the above-mentioned General/Prime Contractor employees and all sub-contractor employees abide by the results of this risk assessment and the contents of the Pre-Construction Risk Assessment Documents during the course of all construction operations at the University of New Mexico Hospitals and Health Sciences Center.</div>
 
-        {activeTab === 'energized' && (
-          <div style={card}>
-            <div style={secHdr}>Energized Electrical Work Permit</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '700' }}>
-                <input type='checkbox' checked={form.energized_required} onChange={e => set('energized_required', e.target.checked)} style={{ width: '18px', height: '18px' }} />
-                Energized Electrical Work Required
-              </label>
-            </div>
-            {form.energized_required && (
-              <>
-                <div style={row}>
-                  <div>
-                    <label style={lbl}>Voltage Level</label>
-                    <select style={sel} value={form.energized_voltage} onChange={e => set('energized_voltage', e.target.value)}>
-                      <option value=''>-- Select --</option>
-                      <option>120V</option>
-                      <option>208V</option>
-                      <option>240V</option>
-                      <option>277V</option>
-                      <option>480V</option>
-                      <option>Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={lbl}>Location / Panel</label>
-                    <input style={inp} type='text' placeholder='Panel ID or location' value={form.energized_location} onChange={e => set('energized_location', e.target.value)} />
-                  </div>
+              <div style={subTitle}>Contractor Compliance Confirmations</div>
+              {[['ack_q1','Have contractors reviewed and confirmed compliance with the Pre-Construction Risk Assessment — Environment of Care for Construction/Renovation/Maintenance Activities, prior to beginning work on site?'],['ack_q2','Have all contractors reviewed and confirmed compliance with the UNMH Interim Life Safety Measures (ILSM) determined as part of this risk assessment?'],['ack_q3','Have all contractors reviewed and confirmed compliance with the UNMH Infection Control Measures (ICM) determined as part of this risk assessment?'],['ack_q4','Have contractors obtained a UNMH Construction Safety Guidelines Poster to post at each area of work for the project?']].map(([k,l]) => (
+                <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '12px', borderBottom: '1px solid #f3f4f6' }}>
+                  <span style={{ fontSize: '13px', flex: 1 }}>{l}</span>
+                  {['YES','NO'].map(v => <label key={v} style={{ display: 'flex', gap: '4px', alignItems: 'center', fontSize: '13px', fontWeight: '700', cursor: 'pointer', color: form[k] === v ? (v === 'YES' ? '#16a34a' : '#dc2626') : '#6b7280' }}><input type='radio' name={k} checked={form[k] === v} onChange={() => set(k, v)} /> {v}</label>)}
                 </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Required PPE</label>
-                  <input style={inp} type='text' placeholder='Arc flash rating, gloves, face shield, etc.' value={form.energized_ppe} onChange={e => set('energized_ppe', e.target.value)} />
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Additional Notes</label>
-                  <textarea style={ta} placeholder='Additional notes...' value={form.energized_notes} onChange={e => set('energized_notes', e.target.value)} />
-                </div>
-              </>
-            )}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setActiveTab('confined')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
-              <button onClick={() => setActiveTab('ceiling')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Above Ceiling →</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'ceiling' && (
-          <div style={card}>
-            <div style={secHdr}>Above Ceiling Work Permit</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', padding: '14px', background: '#f9fafb', borderRadius: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '15px', fontWeight: '700' }}>
-                <input type='checkbox' checked={form.above_ceiling_required} onChange={e => set('above_ceiling_required', e.target.checked)} style={{ width: '18px', height: '18px' }} />
-                Above Ceiling Work Required
-              </label>
-            </div>
-            {form.above_ceiling_required && (
-              <>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Location / Area Description</label>
-                  <input style={inp} type='text' placeholder='Room/area above ceiling' value={form.above_ceiling_location} onChange={e => set('above_ceiling_location', e.target.value)} />
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Fire / Smoke Barriers Status</label>
-                  <select style={sel} value={form.above_ceiling_fire_barriers} onChange={e => set('above_ceiling_fire_barriers', e.target.value)}>
-                    <option value=''>-- Select --</option>
-                    <option>Intact — no barriers will be penetrated</option>
-                    <option>Will be penetrated — restoration plan in place</option>
-                    <option>Already compromised — must be restored</option>
-                  </select>
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                  <label style={lbl}>Additional Notes</label>
-                  <textarea style={ta} placeholder='Additional notes...' value={form.above_ceiling_notes} onChange={e => set('above_ceiling_notes', e.target.value)} />
-                </div>
-              </>
-            )}
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setActiveTab('energized')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
-              <button onClick={() => setActiveTab('checklist')} style={{ background: '#ba0c2f', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>Next: Daily Checklist →</button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'checklist' && (
-          <div style={card}>
-            <div style={secHdr}>Daily Site Checklist</div>
-            <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px', marginTop: '-10px' }}>
-              Check all items verified and in compliance for today.
-            </p>
-            <div style={{ marginBottom: '24px' }}>
-              {CHECKLIST_ITEMS.map((item, i) => (
-                <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px 14px', borderRadius: '6px', cursor: 'pointer', marginBottom: '6px', background: form.daily_checklist?.[i] ? '#f0fdf4' : '#f9fafb', border: `1px solid ${form.daily_checklist?.[i] ? '#86efac' : '#e5e7eb'}` }}>
-                  <input type='checkbox' checked={!!form.daily_checklist?.[i]} onChange={e => set('daily_checklist', { ...form.daily_checklist, [i]: e.target.checked })} style={{ width: '18px', height: '18px', accentColor: '#16a34a' }} />
-                  <span style={{ fontSize: '14px', fontWeight: form.daily_checklist?.[i] ? '700' : '400', color: form.daily_checklist?.[i] ? '#15803d' : '#374151' }}>{item}</span>
-                  {form.daily_checklist?.[i] && <span style={{ marginLeft: 'auto', color: '#16a34a', fontSize: '16px' }}>✓</span>}
-                </label>
               ))}
             </div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={lbl}>Completed / Inspected By</label>
-              <input style={inp} type='text' placeholder='Your full name and title' value={form.completed_by} onChange={e => set('completed_by', e.target.value)} />
+
+            <div style={card}>
+              <div style={secTitle}>Authorized Signatures — UNMH Staff</div>
+              <SigTable rows={[{label:'UNMH Project Manager',nameKey:'sig_pm'},{label:'UNMH Safety',nameKey:'sig_safety'},{label:'UNMH Life Safety',nameKey:'sig_lifesafety'},{label:'UNMH Infection Prevention & Control',nameKey:'sig_ipc'},{label:'UNMH End User',nameKey:'sig_enduser'}]} />
             </div>
-            <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '16px', marginBottom: '20px', fontSize: '13px', color: '#374151' }}>
-              <strong>Summary:</strong>{' '}
-              {Object.values(form.daily_checklist || {}).filter(Boolean).length} of {CHECKLIST_ITEMS.length} items verified
-              {form.icra_class && <> · ICRA Class <strong style={{ color: icraColors[form.icra_class] }}>{form.icra_class}</strong></>}
-              {form.hot_work_required && ' · Hot Work ✓'}
-              {form.confined_space_required && ' · Confined Space ✓'}
-              {form.energized_required && ' · Energized Elec. ✓'}
-              {form.above_ceiling_required && ' · Above Ceiling ✓'}
+
+            <div style={card}>
+              <div style={secTitle}>UNMH Risk Assessment Participants — Contractors / Additional UNMH Staff</div>
+              <div style={infoBox}>The General/Prime Contractor hereby agrees to the project requirements outlined above and that all employees and sub-contractors will abide by the results of this risk assessment for the duration of all construction operations at UNMH. A copy of the completed Pre-Construction Risk Assessment will be maintained in the project file for the duration of the project.</div>
+              <div style={subTitle}>UNMH Staff</div>
+              <SigTable rows={[{label:'UNMH Staff',nameKey:'sig_staff1'},{label:'UNMH Staff',nameKey:'sig_staff2'},{label:'UNMH Staff',nameKey:'sig_staff3'},{label:'UNMH Staff',nameKey:'sig_staff4'},{label:'UNMH Staff',nameKey:'sig_staff5'},{label:'UNMH Staff',nameKey:'sig_staff6'}]} />
+              <div style={{ ...subTitle, marginTop: '16px' }}>Sub-Contractors</div>
+              <SigTable rows={[{label:'Sub-Contractor',nameKey:'sig_sub1'},{label:'Sub-Contractor',nameKey:'sig_sub2'},{label:'Sub-Contractor',nameKey:'sig_sub3'},{label:'Sub-Contractor',nameKey:'sig_sub4'},{label:'Sub-Contractor',nameKey:'sig_sub5'}]} />
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setActiveTab('ceiling')} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>← Back</button>
-              <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>💾 Save Draft</button>
-              <button onClick={() => { if (!form.icra_class) { alert('Please complete ICRA Class first.'); setActiveTab('icra'); return; } if (!form.completed_by) { alert('Please enter your name.'); return; } handleSave('complete') }} disabled={saving} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 24px', fontWeight: '700', cursor: 'pointer', fontSize: '14px' }}>✅ Submit Assessment</button>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
+              <button onClick={() => setStep(8)} style={{ background: '#6b7280', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>← Back: Life Safety</button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => handleSave('draft')} disabled={saving} style={{ background: '#374151', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>💾 Save Draft</button>
+                <button onClick={() => { if (!form.icra_class) { alert('Please complete ICRA Class (Form 2) before submitting.'); setStep(7); return; } handleSave('complete') }} disabled={saving} style={{ background: '#16a34a', color: '#fff', border: 'none', borderRadius: '6px', padding: '10px 28px', fontWeight: '700', cursor: 'pointer', fontSize: '13px' }}>✅ Submit Assessment</button>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
     </div>
