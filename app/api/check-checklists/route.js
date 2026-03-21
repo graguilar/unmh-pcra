@@ -18,7 +18,7 @@ export async function GET(request) {
   // Get all active submissions
   const { data: active, error } = await supabase
     .from('submissions')
-    .select('doc_id, project_name, project_id, pm_name, pm_email, construction_start, construction_end')
+    .select('doc_id, project_name, project_name, project_manager, requester_email, start_date, expiration_date')
     .in('status', ['approved', 'in_progress', 'active'])
 
   if (error) {
@@ -40,8 +40,8 @@ export async function GET(request) {
   // Find active submissions missing today's checklist
   const missing = active.filter(s => {
     // Only flag if today is within their construction window
-    if (s.construction_start && new Date(today) < new Date(s.construction_start)) return false
-    if (s.construction_end && new Date(today) > new Date(s.construction_end)) return false
+    if (s.start_date && new Date(today) < new Date(s.start_date)) return false
+    if (s.expiration_date && new Date(today) > new Date(s.expiration_date)) return false
     return !submittedDocIds.has(s.doc_id)
   })
 
@@ -52,11 +52,11 @@ export async function GET(request) {
   // Send alert email for each missing checklist
   const results = []
   for (const sub of missing) {
-    const pmEmail = sub.pm_email
+    const pmEmail = sub.requester_email
     if (!pmEmail) continue
 
     const { data: emailData, error: emailError } = await resend.emails.send({
-      from: 'UNMH PCRA System <noreply@unmh-pcra.com>',
+      from: 'UNMH PCRA System <onboarding@resend.dev>',
       to: [pmEmail],
       subject: `⚠️ MISSED Daily Checklist — ${sub.doc_id} — ${sub.project_name}`,
       html: `
@@ -85,7 +85,7 @@ export async function GET(request) {
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #6b7280;">Project ID</td>
-                <td style="padding: 8px 0; color: #111;">${sub.project_id || '—'}</td>
+                <td style="padding: 8px 0; color: #111;">${sub.project_name || '—'}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #6b7280;">Date Missed</td>
