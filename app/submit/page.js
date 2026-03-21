@@ -334,7 +334,7 @@ priority: form.priority || 'standard',
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle}>Estimated Start Date</label>
+                  <label style={labelStyle}>Estimated Project Start Date</label>
                   <input style={inputStyle} type="date" value={form.startDate} onChange={e => update('startDate', e.target.value)} />
                 </div><div>
   <label style={labelStyle}>Request Priority *</label>
@@ -364,7 +364,7 @@ priority: form.priority || 'standard',
 </div>
                 <div>
                   <div style={{gridColumn:'span 2'}}>
-  <label style={labelStyle}>Project Duration</label>
+  <<label style={labelStyle}>Project Duration *</label>
   <div style={{display:'flex',gap:'10px'}}>
     <input 
       style={{...inputStyle, width:'120px'}} 
@@ -373,7 +373,8 @@ priority: form.priority || 'standard',
       value={form.durationNum} 
       onChange={e => update('durationNum', e.target.value)} 
       placeholder="e.g. 6" 
-    />
+    required
+        />
     <select 
       style={{...inputStyle, flex:1}} 
       value={form.durationUnit} 
