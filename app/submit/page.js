@@ -120,7 +120,8 @@ priority: 'standard',
         project_name: form.projectName,
         start_date: form.startDate || null,
         project_manager: form.projectManager,
-        duration: form.durationNum + ' ' + form.durationUnit,
+        duration: form.durationNum + ' ' + form.durationUnit,duration_days: form.durationUnit === 'days' ? parseInt(form.durationNum) || null : null,
+duration_weeks: form.durationUnit === 'weeks' ? parseInt(form.durationNum) || null : null,
         contractors: form.contractors,
         gc_contact: form.gcContact,
         building: form.building,
@@ -501,7 +502,38 @@ priority: form.priority || 'standard',
             <h1 style={{ fontSize: '28px', fontWeight: '900', color: '#111', marginBottom: '8px' }}>Meeting Scheduled Successfully!</h1>
             <p style={{ fontSize: '16px', color: '#666', marginBottom: '24px' }}>
               A confirmation email has been sent to <strong>{form.requesterEmail}</strong>
-            </p>
+            </p>{/* Attachment Upload */}
+<div style={{ maxWidth: '560px', margin: '24px auto 0', textAlign: 'left' }}>
+  <div style={{ background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '8px', padding: '20px' }}>
+    <div style={{ fontSize: '14px', fontWeight: '800', color: '#1a2332', marginBottom: '4px' }}>📎 Attach Documents (Optional)</div>
+    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '16px' }}>Upload photos, plans, permits or any supporting documents for your PCRA.</div>
+    <input type='file' multiple accept='image/*,.pdf,.doc,.docx,.xls,.xlsx'
+      onChange={async (e) => {
+        const files = Array.from(e.target.files)
+        if (!files.length) return
+        for (const file of files) {
+          const path = `${docId}/${Date.now()}_${file.name}`
+          const { error } = await supabase.storage.from('pcra-attachments').upload(path, file)
+          if (!error) {
+            await supabase.from('attachments').insert({
+              doc_id: docId,
+              file_name: file.name,
+              file_path: path,
+              file_type: file.type,
+              file_size: file.size,
+              uploaded_by: form.requesterName,
+              section: 'submission'
+            })
+          }
+        }
+        alert('Files uploaded successfully!')
+        e.target.value = ''
+      }}
+      style={{ width: '100%', padding: '10px', border: '1.5px dashed #d1d5db', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', boxSizing: 'border-box' }}
+    />
+    <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '8px' }}>Accepted: Images, PDF, Word, Excel · Max 10MB per file</div>
+  </div>
+</div>
 
             <div style={{ background: '#fff', borderRadius: '8px', padding: '24px', display: 'inline-block', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '24px', minWidth: '320px', textAlign: 'left' }}>
               <div style={{ fontSize: '12px', fontWeight: '700', color: '#888', textTransform: 'uppercase', marginBottom: '8px', textAlign: 'center' }}>Your Document ID</div>
