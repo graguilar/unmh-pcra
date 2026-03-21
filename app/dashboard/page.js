@@ -175,7 +175,7 @@ export default function Dashboard() {
             { label: 'In Review', value: submissions.filter(s=>s.status==='in_review').length, color: '#3b82f6' },
             { label: 'Approved', value: submissions.filter(s=>s.status==='approved').length, color: '#10b981' },
           ].map(stat => (
-            <div key={stat.label} style={{background:'#fff',borderRadius:'8px',padding:'20px',boxShadow:'0 1px 3px rgba(0,0,0,0.1)',borderTop:`4px solid ${stat.color}`}}>
+            <div key={stat.label} style={{background:'#fff',borderRadius:'8px',padding:'20px',boxShadow:'0 1px 3px rgba(0,0,0,0.1)',borderTop:`4px solid borderTop:'4px solid ' + stat.color
               <div style={{fontSize:'32px',fontWeight:'900',color:stat.color}}>{stat.value}</div>
               <div style={{fontSize:'13px',color:'#666',marginTop:'4px'}}>{stat.label}</div>
             </div>
