@@ -174,7 +174,38 @@ export async function POST(req) {
         `
       })
     }
-
+// Urgent/Emergency submission alert
+if (type === 'urgent_submission') {
+  const isEmergency = body.priority === 'emergency'
+  await resend.emails.send({
+    from: FROM,
+    to: COORDINATOR_EMAIL,
+    subject: `${isEmergency ? '🚨 EMERGENCY' : '⚡ URGENT'} PCRA Request — ${body.docId} · ${body.projectName}`,
+    html: `
+      <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:${isEmergency ? '#ba0c2f' : '#d97706'};color:#fff;padding:20px 24px;">
+          <h2 style="margin:0;font-size:20px;">${isEmergency ? '🚨 EMERGENCY PCRA REQUEST' : '⚡ URGENT PCRA REQUEST'}</h2>
+          <p style="margin:6px 0 0;opacity:0.9;font-size:13px;">${isEmergency ? 'Immediate response required — target 2–4 hours' : 'Expedited review required — target 24–48 hours'}</p>
+        </div>
+        <div style="padding:24px;background:#fef2f2;border:2px solid ${isEmergency ? '#ba0c2f' : '#d97706'};">
+          <div style="background:#fff;border-radius:8px;padding:16px;margin-bottom:16px;">
+            <table style="width:100%;border-collapse:collapse;font-size:14px;">
+              <tr><td style="padding:8px 0;font-weight:700;width:140px;">Document ID:</td><td style="color:#ba0c2f;font-weight:900;font-size:16px;">${body.docId}</td></tr>
+              <tr><td style="padding:8px 0;font-weight:700;">Priority:</td><td><span style="background:${isEmergency ? '#ba0c2f' : '#d97706'};color:#fff;padding:2px 10px;border-radius:4px;font-weight:700;font-size:12px;">${body.priority?.toUpperCase()}</span></td></tr>
+              <tr><td style="padding:8px 0;font-weight:700;">Project:</td><td>${body.projectName}</td></tr>
+              <tr><td style="padding:8px 0;font-weight:700;">Building:</td><td>${body.building}</td></tr>
+              <tr><td style="padding:8px 0;font-weight:700;">Requestor:</td><td>${body.requesterName} · ${body.requesterEmail}</td></tr>
+              <tr><td style="padding:8px 0;font-weight:700;">Meeting:</td><td>${body.meetingDate} at ${body.meetingTime}</td></tr>
+              <tr><td style="padding:8px 0;font-weight:700;">Project Manager:</td><td>${body.projectManager}</td></tr>
+            </table>
+          </div>
+          <a href="https://unmh-pcra.vercel.app/dashboard" style="display:inline-block;background:${isEmergency ? '#ba0c2f' : '#d97706'};color:#fff;padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:700;font-size:15px;">Open Dashboard → Review Now</a>
+        </div>
+      </div>
+    `
+  })
+}
+findstr /n "new_submission" "app\submit\page.js"
     return Response.json({ success: true })
   } catch (error) {
     console.error('Email error:', error)

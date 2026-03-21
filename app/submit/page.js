@@ -195,7 +195,25 @@ priority: form.priority || 'standard',
         projectManager: form.projectManager,
       })
     })
-
+    // Send urgent/emergency alert if needed
+    if (form.priority === 'urgent' || form.priority === 'emergency') {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'urgent_submission',
+          priority: form.priority,
+          docId,
+          projectName: form.projectName,
+          building: form.building,
+          requesterName: form.requesterName,
+          requesterEmail: form.requesterEmail,
+          meetingDate: form.meetingDate,
+          meetingTime: form.meetingTime,
+          projectManager: form.projectManager,
+        })
+      })
+    }
     setStep(3)
     } catch (err) {
       alert('Error submitting: ' + err.message)
