@@ -286,6 +286,7 @@ export default function AssessPage() {
       </div>
     )
   }
+}
 const SECTION_TAGS = [
   'General', 'ICRA', 'Hot Work', 'Confined Space', 'Energized Electrical',
   'Above Ceiling', 'Life Safety', 'Asbestos Assessment', 'Barrier Documentation',
