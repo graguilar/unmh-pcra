@@ -7,7 +7,7 @@ export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [filtered, setFiltered] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(true)`n  const [missedToday, setMissedToday] = useState(new Set())
   const router = useRouter()
 
   // Filter state
@@ -33,11 +33,22 @@ export default function Dashboard() {
       .from('submissions')
       .select('*')
       .order('created_at', { ascending: false })
-    if (!error) setSubmissions(data || [])
+    if (!error) { setSubmissions(data || []); loadMissedChecklists(data || []) }
     setLoading(false)
   }
 
-  function exportCSV() {
+  async function loadMissedChecklists(subs) {
+    const today = new Date().toISOString().split('T')[0]
+    const activeSubs = subs.filter(s => ['approved','in_progress','active'].includes(s.status))
+    if (!activeSubs.length) return
+    const { data: checklists } = await supabase
+      .from('daily_checklists')
+      .select('doc_id')
+      .eq('completed_date', today)
+    const submittedDocIds = new Set((checklists || []).map(c => c.doc_id))
+    const missed = new Set(activeSubs.filter(s => !submittedDocIds.has(s.doc_id)).map(s => s.doc_id))
+    setMissedToday(missed)
+  }function exportCSV() {
     const headers = ['Doc ID','Project','Building','Floor','PM','Status','ICRA','Meeting Date','Requestor','Email','Created']
     const rows = filtered.map(s => [
       s.doc_id, s.project_name, s.building, s.floor, s.project_manager,
@@ -293,7 +304,8 @@ export default function Dashboard() {
    <td style={{padding:'12px 16px',fontWeight:'700',color:'#ba0c2f',whiteSpace:'nowrap'}}>
   <span>{s.doc_id}</span>
   {s.priority === 'urgent' && <span style={{marginLeft:'6px',fontSize:'10px',fontWeight:'700',background:'#fffbeb',color:'#d97706',border:'1px solid #d97706',padding:'1px 6px',borderRadius:'4px'}}>⚡ URGENT</span>}
-  {s.priority === 'emergency' && <span style={{marginLeft:'6px',fontSize:'10px',fontWeight:'700',background:'#fef2f2',color:'#ba0c2f',border:'1px solid #ba0c2f',padding:'1px 6px',borderRadius:'4px'}}>🚨 EMERGENCY</span>}
+  {s.priority === 'emergency' && <span style={{marginLeft:'6px',fontSize:'10px',fontWeight:'700',background:'#fef2f2',color:'#ba0c2f',border:'1px solid #ba0c2f',padding:'1px 6px',borderRadius:'4px'}}>🚨 EMERGENCY</span>}`n{missedToday.has(s.doc_id) && <span style={{marginLeft:'6px',fontSize:'10px',fontWeight:'700',background:'#fef2f2',color:'#ba0c2f',border:'1px solid #ba0c2f',padding:'1px 6px',borderRadius:'4px'}}>⚠️ MISSED</span>}
+```  {missedToday.has(s.doc_id) && <span style={{marginLeft:'6px',fontSize:'10px',fontWeight:'700',background:'#fef2f2',color:'#ba0c2f',border:'1px solid #ba0c2f',padding:'1px 6px',borderRadius:'4px'}}>MISSED CHECKLIST</span>}
 </td>
                       <td style={{padding:'12px 16px'}}>{s.project_name || '—'}</td>
                       <td style={{padding:'12px 16px'}}>{s.building || '—'}</td>
