@@ -263,8 +263,7 @@ export default function AssessPage() {
   const steps = [
     { n: 1, label: 'Project Info' }, { n: 2, label: 'Barriers' }, { n: 3, label: 'Risk Items' },
     { n: 4, label: 'Air Quality' }, { n: 5, label: 'Utilities' }, { n: 6, label: 'Safety' },
-    { n: 7, label: 'ICRA' }, { n: 8, label: 'Life Safety' }, { n: 9, label: 'Acknowledgement' },
-  ]
+    { n: 7, label: 'ICRA' }, { n: 8, label: 'Life Safety' }, { n: 9, label: 'Acknowledgement' }, { n: 10, label: 'Attachments' },
 
   function YNField({ label, fieldKey, notesKey, notesLabel, children }) {
     return (
