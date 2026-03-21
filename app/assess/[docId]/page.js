@@ -287,7 +287,7 @@ export default function AssessPage() {
     )
   }
 }
-
+const SECTION_TAGS = [
   'General', 'ICRA', 'Hot Work', 'Confined Space', 'Energized Electrical',
   'Above Ceiling', 'Life Safety', 'Asbestos Assessment', 'Barrier Documentation',
   'Crane Permit', 'Site Photo', 'Other'
