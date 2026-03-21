@@ -4,6 +4,80 @@ import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
 import Disclaimer from '../../components/Disclaimer'
 
+const SECTION_TAGS = [
+  'General', 'ICRA', 'Hot Work', 'Confined Space', 'Energized Electrical',
+  'Above Ceiling', 'Life Safety', 'Asbestos Assessment', 'Barrier Documentation',
+  'Crane Permit', 'Site Photo', 'Other'
+]
+
+function AttachmentsSection({ docId }) {
+  const [files, setFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [tag, setTag] = useState('General')
+
+  useEffect(() => { loadFiles() }, [docId])
+
+  async function loadFiles() {
+    const { data } = await supabase.storage.from('pcra-attachments').list(docId + '/')
+    if (data) {
+      const withUrls = await Promise.all(data.map(async f => {
+        const { data: urlData } = supabase.storage.from('pcra-attachments').getPublicUrl(docId + '/' + f.name)
+        return { ...f, url: urlData.publicUrl, tag: f.name.split('__')[0] || 'General' }
+      }))
+      setFiles(withUrls)
+    }
+  }
+
+  async function handleUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    const fileName = `${tag}__${Date.now()}_${file.name}`
+    const { error } = await supabase.storage.from('pcra-attachments').upload(`${docId}/${fileName}`, file)
+    if (!error) await loadFiles()
+    setUploading(false)
+  }
+
+  async function handleDelete(fileName) {
+    await supabase.storage.from('pcra-attachments').remove([`${docId}/${fileName}`])
+    await loadFiles()
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Tag attachment to section</label>
+        <select value={tag} onChange={e => setTag(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}>
+          {SECTION_TAGS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <label style={{ display: 'block', border: '2px dashed #d1d5db', borderRadius: '8px', padding: '24px', textAlign: 'center', cursor: 'pointer', background: '#f9fafb', marginBottom: '16px' }}>
+        <div style={{ fontSize: '14px', color: '#6b7280' }}>{uploading ? 'Uploading...' : '📎 Click to browse or drag & drop'}</div>
+        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>PDF, DOC, JPG, PNG — Max 25MB</div>
+        <input type='file' style={{ display: 'none' }} onChange={handleUpload} accept='.pdf,.doc,.docx,.jpg,.jpeg,.png,.heic' />
+      </label>
+      {files.length > 0 && (
+        <div>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Attached Files ({files.length})</div>
+          {files.map(f => (
+            <div key={f.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', background: '#f9fafb', borderRadius: '6px', marginBottom: '8px', border: '1px solid #e5e7eb' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#111' }}>{f.name.split('__').slice(1).join('__')}</div>
+                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{f.tag} · {new Date(f.created_at).toLocaleDateString()}</div>
+              </div>
+              <a href={f.url} target='_blank' rel='noreferrer' style={{ fontSize: '12px', color: '#007a86', fontWeight: '700', textDecoration: 'none' }}>View</a>
+              <button onClick={() => handleDelete(f.name)} style={{ fontSize: '12px', color: '#ba0c2f', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '700' }}>Remove</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {files.length === 0 && <div style={{ fontSize: '13px', color: '#9ca3af', textAlign: 'center', padding: '16px' }}>No attachments yet</div>}
+      <div style={{ marginTop: '16px', padding: '12px', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: '6px', fontSize: '12px', color: '#92400e' }}>
+        📎 All attachments are automatically included as an addendum when printing the PCRA
+      </div>
+    </div>
+  )
+}
 const ICRA_MATRIX = {
   'A': { 'Low': 'I', 'Medium': 'I', 'High': 'II', 'Highest': 'II' },
   'B': { 'Low': 'I', 'Medium': 'II', 'High': 'III', 'Highest': 'III' },
@@ -700,7 +774,18 @@ export default function AssessPage() {
               <div style={secTitle}>Contractor / Additional UNMH Staff</div>
               <SigTable rows={[{label:'General Contractor',nameKey:'sig_sub1'},{label:'Sub-Contractor 1',nameKey:'sig_sub2'},{label:'Sub-Contractor 2',nameKey:'sig_sub3'},{label:'Sub-Contractor 3',nameKey:'sig_sub4'},{label:'UNMH Staff',nameKey:'sig_staff1'},{label:'UNMH Staff',nameKey:'sig_staff2'}]} />
             </div>
-            <NavButtons prevStep={8} prevLabel='Life Safety' isLast={true} />
+            <NavButtons prevStep={8} prevLabel='Life Safety' nextStep={10} nextLabel='Attachments' />
+            {/* STEP 10 - Attachments */}
+        {step === 10 && (
+          <div>
+            <div style={card}>
+              <div style={secTitle}>Attachments & Supporting Documents</div>
+              <div style={infoBox}>Attach any supporting documents or photos. All attachments will be included as an addendum to the printed PCRA.</div>
+              <AttachmentsSection docId={docId} />
+            </div>
+            <NavButtons prevStep={9} prevLabel='Acknowledgement' isLast={true} />
+          </div>
+        )}
           </div>
         )}
 
