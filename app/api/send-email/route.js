@@ -12,7 +12,7 @@ export async function POST(req) {
     // New submission alert to coordinator
     if (type === 'new_submission') {
       await resend.emails.send({
-        from: 'noreply@unmh-pcra.com',
+        from: 'onboarding@resend.dev',
         to: COORDINATOR_EMAIL,
         subject: `New PCRA Submission — ${body.docId} · ${body.projectName}`,
         html: `
@@ -41,7 +41,7 @@ export async function POST(req) {
     // Confirmation email to requestor after submission
     if (type === 'submission_confirmation') {
       await resend.emails.send({
-        from: 'noreply@unmh-pcra.com',
+        from: 'onboarding@resend.dev',
         to: body.requesterEmail,
         subject: `PCRA Meeting Scheduled — ${body.docId}`,
         html: `
@@ -76,7 +76,7 @@ export async function POST(req) {
     // Contact message alert to coordinator
     if (type === 'contact_coordinator') {
       await resend.emails.send({
-        from: 'noreply@unmh-pcra.com',
+        from: 'onboarding@resend.dev',
         to: COORDINATOR_EMAIL,
         subject: `New Message from Requestor — ${body.docId}`,
         html: `
@@ -103,7 +103,7 @@ export async function POST(req) {
     // Coordinator reply to requestor
     if (type === 'coordinator_reply') {
       await resend.emails.send({
-        from: 'noreply@unmh-pcra.com',
+        from: 'onboarding@resend.dev',
         to: body.requesterEmail,
         subject: `PCRA Team Reply — ${body.docId}`,
         html: `
@@ -124,7 +124,7 @@ export async function POST(req) {
     // Status change notification to requestor
     if (type === 'status_change') {
       await resend.emails.send({
-        from: 'noreply@unmh-pcra.com',
+        from: 'onboarding@resend.dev',
         to: body.requesterEmail,
         subject: `PCRA Status Update — ${body.docId}`,
         html: `
@@ -148,7 +148,7 @@ export async function POST(req) {
     // Daily checklist notification to project manager
     if (type === 'daily_checklist') {
       await resend.emails.send({
-        from: 'noreply@unmh-pcra.com',
+        from: 'onboarding@resend.dev',
         to: COORDINATOR_EMAIL,
         subject: `Daily Checklist Submitted — ${body.docId} · ${body.checklistType}`,
         html: `
@@ -178,7 +178,7 @@ export async function POST(req) {
 if (type === 'urgent_submission') {
   const isEmergency = body.priority === 'emergency'
   await resend.emails.send({
-    from: 'noreply@unmh-pcra.com',
+    from: 'onboarding@resend.dev',
     to: COORDINATOR_EMAIL,
     subject: `${isEmergency ? '🚨 EMERGENCY' : '⚡ URGENT'} PCRA Request — ${body.docId} · ${body.projectName}`,
     html: `
