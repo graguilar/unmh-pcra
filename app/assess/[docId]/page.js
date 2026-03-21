@@ -55,7 +55,7 @@ function AttachmentsSection({ docId }) {
         <div style={{ fontSize: '14px', color: '#6b7280' }}>{uploading ? 'Uploading...' : '📎 Click to browse or drag & drop'}</div>
         <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>PDF, DOC, JPG, PNG — Max 25MB</div>
         <input type='file' style={{ display: 'none' }} onChange={handleUpload} accept='.pdf,.doc,.docx,.jpg,.jpeg,.png,.heic' />
-      </label>
+      const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
       {files.length > 0 && (
         <div>
           <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Attached Files ({files.length})</div>
@@ -287,7 +287,7 @@ export default function AssessPage() {
     )
   }
 }
-const SECTION_TAGS = [
+
   'General', 'ICRA', 'Hot Work', 'Confined Space', 'Energized Electrical',
   'Above Ceiling', 'Life Safety', 'Asbestos Assessment', 'Barrier Documentation',
   'Crane Permit', 'Site Photo', 'Other'
