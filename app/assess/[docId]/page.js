@@ -286,6 +286,68 @@ export default function AssessPage() {
       </div>
     )
   }
+const SECTION_TAGS = [
+  'General', 'ICRA', 'Hot Work', 'Confined Space', 'Energized Electrical',
+  'Above Ceiling', 'Life Safety', 'Asbestos Assessment', 'Barrier Documentation',
+  'Crane Permit', 'Site Photo', 'Other'
+]
+
+function AttachmentsSection({ docId }) {
+  const [files, setFiles] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [tag, setTag] = useState('General')
+
+  useEffect(() => { loadFiles() }, [docId])
+
+  async function loadFiles() {
+    const { data } = await supabase.storage.from('pcra-attachments').list(docId + '/')
+    if (data) {
+      const withUrls = await Promise.all(data.map(async f => {
+        const { data: urlData } = supabase.storage.from('pcra-attachments').getPublicUrl(docId + '/' + f.name)
+        return { ...f, url: urlData.publicUrl, tag: f.name.split('__')[0] || 'General' }
+      }))
+      setFiles(withUrls)
+    }
+  }
+
+  async function handleUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    const fileName = `${tag}__${Date.now()}_${file.name}`
+    const { error } = await supabase.storage.from('pcra-attachments').upload(`${docId}/${fileName}`, file)
+    if (!error) await loadFiles()
+    setUploading(false)
+  }
+
+  async function handleDelete(fileName) {
+    await supabase.storage.from('pcra-attachments').remove([`${docId}/${fileName}`])
+    await loadFiles()
+  }
+
+  return (
+    <div>
+      <div style={{ marginBottom: '16px' }}>
+        <label style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Tag attachment to section</label>
+        <select value={tag} onChange={e => setTag(e.target.value)} style={{ width: '100%', padding: '8px 12px', border: '1.5px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}>
+          {SECTION_TAGS.map(t => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+      <label style={{ display: 'block', border: '2px dashed #d1d5db', borderRadius: '8px', padding: '24px', textAlign: 'center', cursor: 'pointer', background: '#f9fafb', marginBottom: '16px' }}>
+        <div style={{ fontSize: '14px', color: '#6b7280' }}>{uploading ? 'Uploading...' : '📎 Click to browse or drag & drop'}</div>
+        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>PDF, DOC, JPG, PNG — Max 25MB</div>
+        <input type='file' style={{ display: 'none' }} onChange={handleUpload} accept='.pdf,.doc,.docx,.jpg,.jpeg,.png,.heic' />
+      </label>
+      {files.length > 0 && (
+        <div>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', marginBottom: '8px' }}>Attached Files ({files.length})</div>
+          {files.map(f => (
+            <div key={f.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', background: '#f9fafb', borderRadius: '6px', marginBottom: '8px', border: '1px solid #e5e7eb' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#111' }}>{f.name.split('__').slice(1).join('__')}</div>
+                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{f.tag} · {new Date(f.created_at).toLocaleDateString()}</div>
+              </div>
+              <a hre
 
   function CheckRow({ label, fieldKey }) {
     return (
