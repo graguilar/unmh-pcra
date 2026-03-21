@@ -60,7 +60,7 @@ export default function Dashboard() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `pcra-submissions-${new Date().toISOString().split('T')[0]}.csv`
+    a.download = 'pcra-submissions-' + new Date().toISOString().split('T')[0] + '.csv'
     a.click()
     URL.revokeObjectURL(url)
   }
