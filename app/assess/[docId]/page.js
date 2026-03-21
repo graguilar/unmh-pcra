@@ -53,7 +53,7 @@ function AttachmentsSection({ docId }) {
       </div>
       <label style={{ display: 'block', border: '2px dashed #d1d5db', borderRadius: '8px', padding: '24px', textAlign: 'center', cursor: 'pointer', background: '#f9fafb', marginBottom: '16px' }}>
         <div style={{ fontSize: '14px', color: '#6b7280' }}>{uploading ? 'Uploading...' : '📎 Click to browse or drag & drop'}</div>
-        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>PDF, DOC, JPG, PNG — Max 25MB</div>
+        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>PDF, DOC, JPG, PNG - Max 25MB</div>
         <input type='file' style={{ display: 'none' }} onChange={handleUpload} accept='.pdf,.doc,.docx,.jpg,.jpeg,.png,.heic' />
       const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
       {files.length > 0 && (
