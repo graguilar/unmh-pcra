@@ -7,7 +7,8 @@ export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [submissions, setSubmissions] = useState([])
   const [filtered, setFiltered] = useState([])
-  const [loading, setLoading] = useState(true)`n  const [missedToday, setMissedToday] = useState(new Set())
+  const [loading, setLoading] = useState(true)
+  const [missedToday, setMissedToday] = useState(new Set())
   const router = useRouter()
 
   // Filter state
